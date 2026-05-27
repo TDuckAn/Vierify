@@ -8,7 +8,8 @@
 
 **Planning** → Write and update `PLAN.md` (task status, architecture decisions, risk register)
 **Testing** → Write Vitest integration tests + Playwright E2E tests after Codex implements each feature
-**Review** → Review Codex PRs/diffs for correctness, security, business rule compliance
+**CI/CD config** → Write and own GitHub Actions workflows (`.github/workflows/`) — no round-trip to Codex needed
+**Review** → Review Codex diffs for correctness, security, business rule compliance
 
 ---
 

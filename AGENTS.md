@@ -129,9 +129,9 @@ pnpm --filter api drizzle-kit migrate   # runs against DATABASE_URL
 
 ```
 # apps/api/.env
-DATABASE_URL=             # Supabase PostgreSQL connection string
-SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
+DATABASE_URL=             # Supabase: Dashboard → Settings → Database → Connection string (Transaction mode)
+SUPABASE_URL=             # Supabase: Dashboard → Settings → API → Project URL
+SUPABASE_SERVICE_ROLE_KEY=  # Supabase: Dashboard → Settings → API → service_role key (NEVER expose to client)
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
 POLYGON_AMOY_RPC=         # https://rpc-amoy.polygon.technology
@@ -140,13 +140,13 @@ CONTRACT_ADDRESS=         # TraceabilityRegistry on Amoy
 
 # apps/web/.env.local
 NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=   # Supabase renamed anon key → publishable key
 NEXT_PUBLIC_API_URL=      # Render backend URL
 
 # apps/mobile/.env
 EXPO_PUBLIC_API_URL=
 EXPO_PUBLIC_SUPABASE_URL=
-EXPO_PUBLIC_SUPABASE_ANON_KEY=
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 ```
 
 Never commit `.env` files. Use `.env.example` with empty values.
@@ -186,8 +186,11 @@ Open a PR when task is `🔄` → ready for Claude review → merge when ✅.
 1. Check `PLAN.md → Current Sprint` for `☐` tasks
 2. Pick the lowest-numbered unblocked task
 3. Update status to `🔄` in PLAN.md
-4. Create branch `feat/T##-short-name`
-5. Implement following patterns above
-6. Verify `pnpm typecheck && pnpm lint && pnpm test` pass locally
-7. Open PR — Claude reviews and writes integration tests
-8. Merge after CI green + Claude approval → update PLAN.md to `✅`
+4. Implement following patterns above
+5. Verify `pnpm typecheck && pnpm lint && pnpm test` pass locally
+6. Signal Claude for review — Claude will inspect the files and write integration tests
+7. Claude approves → update PLAN.md to `✅`
+
+> **Git / CI note:** Branch + PR + CI steps apply only when a GitHub remote is connected
+> (T10). While working locally without a git repo, skip those steps entirely — do NOT
+> block task completion waiting for CI. Just signal Claude for review.

@@ -111,24 +111,53 @@ audit_log          id · actor_id · action · resource_id · created_at  ← ap
 
 ---
 
+## Focus — Backend-First
+
+> **Current priority:** Complete backend + blockchain layer fully. Frontend is skeleton-only
+> (routing stubs, data wiring, no visual polish) — real UI handed off to **Claude Design**
+> after backend is stable. Playwright tests (T14) are written after Claude Design ships UI.
+
+---
+
 ## Current Sprint — Week 3–4 (MVP)
+
+### Backend (priority — complete first)
 
 | # | Task | Status | Notes |
 |---|---|---|---|
-| T01 | Turborepo monorepo scaffold + shared configs | ☐ | Top priority — unblocks everything |
-| T02 | Supabase project + Drizzle schema + migrations | ☐ | Create schema.ts first |
-| T03 | Fastify API + tRPC router + Render deploy | ☐ | Freeze router shape before mobile starts |
-| T04 | Supabase Auth (email/password, JWT) | ☐ | Part of T03 |
-| T05 | Next.js web: marketing page on Vercel | ☐ | Can be static at MVP |
-| T06 | Next.js web: B2C QR timeline page (basic) | ☐ | SSR, read from Supabase |
-| T07 | Expo mobile: login + scan QR + create batch | ☐ | Core MerchantApp flow |
-| T08 | Electron desktop: same React shell as mobile | ☐ | Wrap packages/ui in Electron |
-| T09 | BullMQ worker: SHA-256 hash → Polygon Amoy | ☐ | Highest risk — start early |
-| T10 | GitHub Actions CI (lint + type-check + test) | ☐ | |
-| T11 | EAS Build: Android .apk download link | ☐ | Needs Apple Dev account for iOS |
+| T01 | Turborepo monorepo scaffold + shared configs | ✅ | Reviewed by Claude |
+| T02 | Supabase project + Drizzle schema + migrations | ✅ | Migration applied · Web helpers complete |
+| T03 | Fastify API + tRPC router + Render deploy | ✅ | Reviewed by Claude · CORS origin:true OK for MVP |
+| T04 | Supabase Auth (email/password, JWT) | ✅ | Reviewed by Claude · KYB gate enforced · RBAC Sprint 3 |
+| T09 | BullMQ worker: SHA-256 hash → Polygon Amoy | ✅ | Reviewed by Claude · Contract deployed to Amoy · worker.ts entry point present |
+| T13 | Vitest integration tests (API routes) | ✅ | Written by Claude — 5 files, 25 cases covering all business rules |
+| T10 | GitHub Actions CI (lint + type-check + test) | ✅ | Written by Claude — ci.yml (quality + test jobs) + release.yml skeleton for T11/T12 |
+
+### Frontend Skeleton (Codex — stub only, no design work)
+
+> Skeleton scope: routing, layout wiring, tRPC calls stubbed, no visual polish.
+> Output is handed to **Claude Design** who will own all UI/UX from this point.
+
+| # | Task | Status | Notes |
+|---|---|---|---|
+| T05 | Next.js web: route skeleton + Vercel deploy | ✅ | Reviewed by Claude — landing page + layout done; trace page wiring is T06 scope |
+| T06 | Next.js web: B2C timeline data layer | ✅ | Reviewed by Claude · PII anonymised server-side · ⚠️ RLS policy needed on Supabase (anon SELECT on trace_batch + supply_chain_node) |
+| T07 | Expo mobile: nav skeleton + tRPC client wired | ✅ | Reviewed by Claude · expo-router groups correct · Switch to createTRPCReact in Sprint 2 |
+| T08 | Electron desktop: shell loading web renderer | ✅ | Reviewed by Claude · ⚠️ Claude Design must decide: wrap Next.js web (delete renderer.tsx) OR own Vite renderer (delete web URL fallback) |
+
+### Builds & Releases (after skeleton + T09 done)
+
+| # | Task | Status | Notes |
+|---|---|---|---|
+| T11 | EAS Build: Android .apk | ☐ | Needs Apple Dev account for iOS |
 | T12 | Electron Builder: .exe + .dmg GitHub Release | ☐ | Unsigned builds OK for MVP |
-| T13 | Vitest integration tests (API routes) | ☐ | Claude writes after T02–T03 |
-| T14 | Playwright smoke tests (web flows) | ☐ | Claude writes after T05–T06 |
+
+### Claude Design Handoff (after T05–T08 skeleton done)
+
+| # | Task | Status | Notes |
+|---|---|---|---|
+| T14 | Playwright smoke tests (web flows) | ☐ | Claude writes after Claude Design ships real UI |
+| — | Full UI/UX implementation | ☐ | Claude Design takes over all visual work from skeleton |
 
 ---
 
