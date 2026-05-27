@@ -8,13 +8,15 @@
     "build": "tsc -p tsconfig.json && vite build",
     "dev": "pnpm build && electron .",
     "lint": "tsc --noEmit -p tsconfig.json",
+    "package": "pnpm build && electron-builder",
+    "package:mac": "pnpm build && electron-builder --mac dmg",
+    "package:win": "pnpm build && electron-builder --win nsis",
     "start": "electron .",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@vierify/ui": "workspace:*",
-    "electron": "^32.2.8",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -22,7 +24,40 @@
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
+    "electron": "32.2.8",
+    "electron-builder": "^26.8.1",
     "vite": "^6.0.5",
     "vitest": "^2.1.8"
+  },
+  "build": {
+    "appId": "com.vierify.merchant.desktop",
+    "productName": "Vierify Merchant",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist-electron/**/*",
+      "dist/renderer/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+      "identity": null
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

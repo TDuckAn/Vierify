@@ -149,8 +149,8 @@ audit_log          id · actor_id · action · resource_id · created_at  ← ap
 
 | # | Task | Status | Notes |
 |---|---|---|---|
-| T11 | EAS Build: Android .apk | ☐ | Needs Apple Dev account for iOS |
-| T12 | Electron Builder: .exe + .dmg GitHub Release | ☐ | Unsigned builds OK for MVP |
+| T11 | EAS Build: Android .apk | ✅ | Reviewed by Claude · eas.json in apps/mobile/ · expo-router v3→v4 fix · ⚠️ Set EAS_TOKEN secret in GitHub + confirm owner:"tduckan" matches Expo account before first build |
+| T12 | Electron Builder: .exe + .dmg GitHub Release | 🔄 | Unsigned builds OK for MVP |
 
 ### Claude Design Handoff (after T05–T08 skeleton done)
 

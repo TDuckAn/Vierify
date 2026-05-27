@@ -4,11 +4,32 @@
     "slug": "vierify-merchant",
     "scheme": "vierify",
     "version": "0.0.0",
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "orientation": "portrait",
-    "plugins": ["expo-router"],
+    "ios": {
+      "bundleIdentifier": "com.vierify.merchant"
+    },
+    "android": {
+      "package": "com.vierify.merchant",
+      "versionCode": 1
+    },
+    "plugins": [
+      "expo-router"
+    ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "4c4a5ce7-5af4-49ca-a58d-929a874f31c2"
+      }
+    },
+    "owner": "tduckan"
   }
 }
