@@ -1,16 +1,36 @@
 import { createServerSupabaseClient } from "../../../lib/supabase";
 
-type TraceNode = {
+export type TraceNode = {
   is_individual?: boolean;
   name?: string | null;
   node_address?: string | null;
   [key: string]: unknown;
 };
 
-type TraceBatchPayload = {
+export type TraceBatchPayload = {
+  bc_status?: number | null;
+  created_at?: string | null;
+  gs1_trace_id?: string | null;
+  id?: string | null;
+  name?: string | null;
+  quantity?: number | string | null;
   supply_chain_node?: TraceNode | TraceNode[] | null;
+  tx_hash?: string | null;
+  uom?: string | null;
   [key: string]: unknown;
 };
+
+export type TraceTimelineResult =
+  | {
+      data: TraceBatchPayload;
+      id: string;
+      ok: true;
+    }
+  | {
+      error: string;
+      id: string;
+      ok: false;
+    };
 
 function anonymiseNode(node: TraceNode): TraceNode {
   if (!node.is_individual) {
@@ -44,7 +64,7 @@ function anonymiseTracePayload(payload: TraceBatchPayload): TraceBatchPayload {
   return payload;
 }
 
-export async function getTraceTimeline(id: string) {
+export async function getTraceTimeline(id: string): Promise<TraceTimelineResult> {
   try {
     const supabase = createServerSupabaseClient();
     const { data, error } = await supabase

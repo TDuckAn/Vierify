@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../queues/blockchain.queue", () => ({
@@ -5,8 +6,9 @@ vi.mock("../queues/blockchain.queue", () => ({
 }));
 
 import type { DbClient } from "../db/client";
-import { linkGenealogy } from "../modules/genealogy/genealogy.service";
-import { linkGenealogySchema } from "../modules/genealogy/genealogy.schema";
+import { auditLog } from "../db/schema";
+import { DEFAULT_WASTE_TOLERANCE, linkGenealogySchema } from "../modules/genealogy/genealogy.schema";
+import { getGenealogy, linkGenealogy } from "../modules/genealogy/genealogy.service";
 import {
   TEST_ACTOR_ID,
   cleanupNodes,
@@ -92,6 +94,43 @@ describe("genealogy", () => {
       ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     });
 
+    it("rejects circular genealogy through existing descendants", async () => {
+      const node = await insertTestNode(db);
+      nodeIds.push(node.id);
+
+      const source = await insertTestBatch(db, node.id, { quantity: "100" });
+      const intermediate = await insertTestBatch(db, node.id, { quantity: "100" });
+      const descendant = await insertTestBatch(db, node.id, { quantity: "100" });
+
+      await linkGenealogy(
+        {
+          childBatchId: intermediate.id,
+          parentBatchIds: [source.id],
+          wasteTolerance: 0
+        },
+        TEST_ACTOR_ID
+      );
+      await linkGenealogy(
+        {
+          childBatchId: descendant.id,
+          parentBatchIds: [intermediate.id],
+          wasteTolerance: 0
+        },
+        TEST_ACTOR_ID
+      );
+
+      await expect(
+        linkGenealogy(
+          {
+            childBatchId: source.id,
+            parentBatchIds: [descendant.id],
+            wasteTolerance: 0
+          },
+          TEST_ACTOR_ID
+        )
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    });
+
     it("rejects when a parent batch does not exist", async () => {
       const node = await insertTestNode(db);
       nodeIds.push(node.id);
@@ -141,6 +180,159 @@ describe("genealogy", () => {
       );
 
       expect(links).toHaveLength(2);
+    });
+
+    it("accepts child quantity exactly at the tolerance boundary", async () => {
+      const node = await insertTestNode(db);
+      nodeIds.push(node.id);
+
+      // child = 110, parent = 100, tolerance = 0.1 → limit = 100 × 1.1 = 110 exactly → OK
+      const parent = await insertTestBatch(db, node.id, { quantity: "100" });
+      const child = await insertTestBatch(db, node.id, { quantity: "110" });
+
+      await expect(
+        linkGenealogy(
+          { childBatchId: child.id, parentBatchIds: [parent.id], wasteTolerance: 0.1 },
+          TEST_ACTOR_ID
+        )
+      ).resolves.toHaveLength(1);
+    });
+
+    it("rejects child quantity one unit above the tolerance boundary", async () => {
+      const node = await insertTestNode(db);
+      nodeIds.push(node.id);
+
+      // child = 111, parent = 100, tolerance = 0.1 → limit = 110 < 111 → CONFLICT
+      const parent = await insertTestBatch(db, node.id, { quantity: "100" });
+      const child = await insertTestBatch(db, node.id, { quantity: "111" });
+
+      await expect(
+        linkGenealogy(
+          { childBatchId: child.id, parentBatchIds: [parent.id], wasteTolerance: 0.1 },
+          TEST_ACTOR_ID
+        )
+      ).rejects.toMatchObject({ code: "CONFLICT" });
+    });
+
+    it("applies DEFAULT_WASTE_TOLERANCE (5%) when wasteTolerance is omitted", async () => {
+      const node = await insertTestNode(db);
+      nodeIds.push(node.id);
+
+      expect(DEFAULT_WASTE_TOLERANCE).toBe(0.05);
+
+      // child = 104, parent = 100 → 100 × 1.05 = 105 ≥ 104 → OK
+      const parent = await insertTestBatch(db, node.id, { quantity: "100" });
+      const child = await insertTestBatch(db, node.id, { quantity: "104" });
+
+      const parsed = linkGenealogySchema.parse({
+        childBatchId: child.id,
+        parentBatchIds: [parent.id],
+      });
+      expect(parsed.wasteTolerance).toBe(0.05);
+
+      await expect(
+        linkGenealogy(parsed, TEST_ACTOR_ID)
+      ).resolves.toHaveLength(1);
+    });
+
+    it("writes an audit_log entry with action='genealogy.link' and resourceId=childBatchId", async () => {
+      const node = await insertTestNode(db);
+      nodeIds.push(node.id);
+
+      const parent = await insertTestBatch(db, node.id, { quantity: "100" });
+      const child = await insertTestBatch(db, node.id, { quantity: "80" });
+
+      await linkGenealogy(
+        { childBatchId: child.id, parentBatchIds: [parent.id], wasteTolerance: 0 },
+        TEST_ACTOR_ID
+      );
+
+      const entries = await db
+        .select()
+        .from(auditLog)
+        .where(eq(auditLog.resourceId, child.id));
+
+      expect(entries.length).toBeGreaterThanOrEqual(1);
+      expect(entries.some((e) => e.action === "genealogy.link")).toBe(true);
+      expect(entries.every((e) => e.actorId === TEST_ACTOR_ID)).toBe(true);
+    });
+  });
+
+  // ─── getGenealogy ──────────────────────────────────────────────────────────
+
+  describe("getGenealogy", () => {
+    it("returns empty parents and children for an unlinked batch", async () => {
+      const node = await insertTestNode(db);
+      nodeIds.push(node.id);
+
+      const orphan = await insertTestBatch(db, node.id);
+      const result = await getGenealogy(orphan.id);
+
+      expect(result.parents).toHaveLength(0);
+      expect(result.children).toHaveLength(0);
+    });
+
+    it("returns parents when a child is linked to parents", async () => {
+      const node = await insertTestNode(db);
+      nodeIds.push(node.id);
+
+      const parent = await insertTestBatch(db, node.id, { quantity: "100" });
+      const child = await insertTestBatch(db, node.id, { quantity: "80" });
+
+      await linkGenealogy(
+        { childBatchId: child.id, parentBatchIds: [parent.id], wasteTolerance: 0 },
+        TEST_ACTOR_ID
+      );
+
+      const result = await getGenealogy(child.id);
+
+      expect(result.parents).toHaveLength(1);
+      expect(result.parents[0]?.parentBatch.id).toBe(parent.id);
+      expect(result.children).toHaveLength(0);
+    });
+
+    it("returns children when a parent has linked children", async () => {
+      const node = await insertTestNode(db);
+      nodeIds.push(node.id);
+
+      const parent = await insertTestBatch(db, node.id, { quantity: "100" });
+      const child = await insertTestBatch(db, node.id, { quantity: "80" });
+
+      await linkGenealogy(
+        { childBatchId: child.id, parentBatchIds: [parent.id], wasteTolerance: 0 },
+        TEST_ACTOR_ID
+      );
+
+      const result = await getGenealogy(parent.id);
+
+      expect(result.children).toHaveLength(1);
+      expect(result.children[0]?.childBatch.id).toBe(child.id);
+      expect(result.parents).toHaveLength(0);
+    });
+
+    it("returns both parents and children for a middle-chain batch", async () => {
+      const node = await insertTestNode(db);
+      nodeIds.push(node.id);
+
+      const grandparent = await insertTestBatch(db, node.id, { quantity: "100" });
+      const middle = await insertTestBatch(db, node.id, { quantity: "90" });
+      const grandchild = await insertTestBatch(db, node.id, { quantity: "80" });
+
+      await linkGenealogy(
+        { childBatchId: middle.id, parentBatchIds: [grandparent.id], wasteTolerance: 0 },
+        TEST_ACTOR_ID
+      );
+      await linkGenealogy(
+        { childBatchId: grandchild.id, parentBatchIds: [middle.id], wasteTolerance: 0 },
+        TEST_ACTOR_ID
+      );
+
+      const result = await getGenealogy(middle.id);
+
+      expect(result.parents).toHaveLength(1);
+      expect(result.parents[0]?.parentBatch.id).toBe(grandparent.id);
+      expect(result.children).toHaveLength(1);
+      expect(result.children[0]?.childBatch.id).toBe(grandchild.id);
     });
   });
 

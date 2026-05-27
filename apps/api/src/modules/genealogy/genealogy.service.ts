@@ -19,6 +19,46 @@ function parseQuantity(value: string): number {
   return parsed;
 }
 
+async function hasCircularReference(
+  childBatchId: string,
+  parentBatchIds: string[]
+): Promise<boolean> {
+  const db = getDb();
+  const targetParentIds = new Set(parentBatchIds);
+  const visitedBatchIds = new Set<string>();
+  let frontier = [childBatchId];
+
+  while (frontier.length > 0) {
+    const currentBatchIds = frontier.filter((batchId) => !visitedBatchIds.has(batchId));
+    frontier = [];
+
+    if (currentBatchIds.length === 0) {
+      continue;
+    }
+
+    for (const batchId of currentBatchIds) {
+      visitedBatchIds.add(batchId);
+    }
+
+    const childLinks = await db
+      .select({ childBatchId: batchGenealogy.childBatchId })
+      .from(batchGenealogy)
+      .where(inArray(batchGenealogy.parentBatchId, currentBatchIds));
+
+    for (const link of childLinks) {
+      if (targetParentIds.has(link.childBatchId)) {
+        return true;
+      }
+
+      if (!visitedBatchIds.has(link.childBatchId)) {
+        frontier.push(link.childBatchId);
+      }
+    }
+  }
+
+  return false;
+}
+
 export async function linkGenealogy(
   input: z.infer<typeof linkGenealogySchema>,
   actorId: string
@@ -27,6 +67,13 @@ export async function linkGenealogy(
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "A batch cannot be linked to itself."
+    });
+  }
+
+  if (await hasCircularReference(input.childBatchId, input.parentBatchIds)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Circular batch genealogy is not allowed."
     });
   }
 

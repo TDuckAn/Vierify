@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const DEFAULT_WASTE_TOLERANCE = 0.05;
+
 export const linkGenealogySchema = z.object({
   childBatchId: z.string().uuid(),
   parentBatchIds: z
@@ -9,7 +11,7 @@ export const linkGenealogySchema = z.object({
     .refine((ids) => new Set(ids).size === ids.length, {
       message: "Parent batch IDs must be unique."
     }),
-  wasteTolerance: z.number().min(0).max(1).default(0)
+  wasteTolerance: z.number().min(0).max(1).default(DEFAULT_WASTE_TOLERANCE)
 });
 
 export const getGenealogySchema = z.object({

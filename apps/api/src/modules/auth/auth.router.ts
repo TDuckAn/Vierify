@@ -3,6 +3,7 @@ import { protectedProcedure, router } from "../../trpc";
 export const authRouter = router({
   me: protectedProcedure.query(({ ctx }) => ({
     email: ctx.user.email,
-    id: ctx.user.id
+    id: ctx.user.id,
+    role: ctx.user.role
   }))
 });

@@ -126,27 +126,30 @@ audit_log          id · actor_id · action · resource_id · created_at  ← ap
 
 | # | Task | Owner | Status | Acceptance criteria |
 |---|---|---|---|---|
-| T15 | Genealogy API: parent→child batch linking | Codex | ☐ | `POST /batches/:child_id/parents` · HTTP 409 on mass balance violation · HTTP 400 on circular reference · writes to `batch_genealogy` |
-| T16 | Document upload: Supabase Storage + doc_hash | Codex | ☐ | Multipart upload → Storage bucket · SHA-256 of file stored in `trace_batch.doc_hash` · presigned URL returned |
-| T17 | QR code generation (GS1 GTIN format) | Codex | ☐ | `GET /batches/:id/qr` returns QR data URL · encodes `gs1_trace_id` · QR resolves to `/trace/{gs1_trace_id}` |
-| T18 | B2C timeline: blockchain proof display | Codex | ☐ | `tx_hash` + Polygonscan Amoy link on web trace page · `bc_status` badge on mobile history · pending batches show pending state |
-| T19 | B2B KYB approval flow + admin endpoint | Codex | ☐ | `PATCH /admin/nodes/:id/kyb` (admin-only) · merchant blocked until `kyb_status=approved` · `audit_log` entry on each status change |
+| T15 | Genealogy API: parent→child batch linking | Codex | ✅ | Reviewed by Claude · `POST /batches/:child_id/parents` REST + tRPC · BFS circular detection · mass balance enforced · audit_log written · DEFAULT_WASTE_TOLERANCE=0.05 |
+| T16 | Document upload: Supabase Storage + doc_hash | Codex | ✅ | Reviewed by Claude · Multipart upload → Storage bucket · SHA-256 of file stored in `trace_batch.doc_hash` · presigned URL returned · 10 MB limit enforced · audit_log written · `enqueueHashBatchJob` triggered post-upload · ⚠️ bucket must be private; name must match `SUPABASE_DOCUMENTS_BUCKET` env var (default: `batch-documents`) |
+| T17 | QR code generation (GS1 GTIN format) | Codex | ✅ | Reviewed by Claude · `GET /batches/:id/qr` returns PNG data URL · `encodeURIComponent` on gs1TraceId (handles `/` in GS1 batch codes) · `CONSUMER_TRACE_BASE_URL` env override · public endpoint (no auth) · Codex shipped 3 tests: generation, URL-encoding, NOT_FOUND |
+| T18 | B2C timeline: blockchain proof display | Codex | ✅ | Reviewed by Claude · `tx_hash` + Polygonscan Amoy link (`amoy.polygonscan.com/tx/{txHash}`) · emerald/amber `bc_status` badge (confirmed only when `bc_status===1 && tx_hash`) · pending state with explanatory text · PII anonymisation enforced in `data.ts` ✅ · mobile data wired via `bc_status`/`tx_hash` in API response (visual badge by Claude Design) · ⚠️ DEPENDENCY: Supabase anon RLS policy needed on `trace_batch` + `supply_chain_node` (pre-existing T06 debt) |
+| T19 | B2B KYB approval flow + admin endpoint | Codex | ✅ | Reviewed by Claude · `PATCH /admin/nodes/:id/kyb` · `requireAdminUser` is first line of handler ✅ · `adminProcedure` middleware gates tRPC route ✅ · merchant blocked until `kyb_status=approved` ✅ · `audit_log` entry on each status change ✅ · Security fix applied: admin role reads `app_metadata.role` only |
 | T20 | Mobile offline mode: expo-sqlite queue | Codex | ☐ | Scan works with no network · local queue flushes to API on reconnect · no data loss on crash |
 
 ### Testing (Claude — written after each backend task ships)
 
 | # | Task | Owner | Status | Notes |
 |---|---|---|---|---|
-| T21 | Vitest: genealogy + mass balance + circular ref | Claude | ☐ | After T15 |
-| T22 | Vitest: document upload + doc_hash + KYB flow | Claude | ☐ | After T16 + T19 |
+| T21 | Vitest: genealogy + mass balance + circular ref | Claude | ✅ | Written by Claude · augmented Codex baseline · added: exact boundary cases, DEFAULT_WASTE_TOLERANCE assertion, audit_log verification, full getGenealogy coverage (4 cases: orphan / parent view / child view / middle-chain) |
+| T22 | Vitest: document upload + doc_hash + KYB flow | Claude | ✅ | Written by Claude · 13 cases in `documents-kyb.test.ts` · upload: happy path, empty file, >10 MB, NOT_FOUND, audit_log, enqueueHashBatchJob · KYB: updateKybStatus + audit_log, NOT_FOUND, createBatch blocked for pending/rejected/suspended (it.each), unblocked after approval · RBAC: admin access, FORBIDDEN (no role), UNAUTHORIZED (no token / bad token) |
 | T14 | Playwright smoke tests (web flows) | Claude | ☐ | After Claude Design ships Sprint 2 UI |
 
 ### Claude Design (starts after T15–T19 backend done)
 
+> Brief written: `CLAUDE_DESIGN_BRIEF.md` — hand this file to Claude Design at session start.
+
 | # | Task | Owner | Status | Notes |
 |---|---|---|---|---|
-| — | Mobile MerchantApp: scan + batch + history UI | Claude Design | ☐ | Full visual implementation; uses NativeWind + expo-router v6 + reanimated v4 APIs |
-| — | Web B2C: timeline + blockchain badge + QR landing | Claude Design | ☐ | Full visual implementation; Tailwind + Next.js App Router |
+| — | Web: marketing landing + pricing + i18n (vi/en) | Claude Design | ☐ | shadcn/ui · Be Vietnam Pro font · framer-motion scroll animations · light/dark mode · 5-tier pricing table |
+| — | Web B2C: trace timeline visual | Claude Design | ☐ | Skeleton exists from T18 · add full visual treatment per brief §6.2 |
+| — | Mobile MerchantApp: all screens | Claude Design | ☐ | NativeWind v4 · expo-router v6 · reanimated v4 APIs ONLY · screens per brief §7 |
 
 ---
 
@@ -187,7 +190,8 @@ audit_log          id · actor_id · action · resource_id · created_at  ← ap
 | GS1 GTIN validation too strict / too loose | Invalid IDs accepted or valid IDs rejected | Unit test with real TCVN 13274:2020 sample GTINs; reuse regex from T02 |
 | Apple Developer account still not enrolled | No TestFlight distribution for Sprint 2 preview | Expo Go covers dev testing; escalate enrollment — needed before Sprint 3 |
 | reanimated v4 API breaks Claude Design animations | UI regression in mobile | Claude Design must use v4 APIs (`useSharedValue`, `useAnimatedStyle`); no v3 patterns |
-| Admin KYB endpoint lacks RBAC check | Any authenticated user can approve KYB | Codex: role check must be first line of handler; T22 test must verify 403 for non-admin |
+| Admin KYB endpoint lacks RBAC check | Any authenticated user can approve KYB | ✅ Role check is first line of REST handler; T22 tests verify 403 for non-admin |
+| `getUserRole` falls back to `user_metadata` (user-controlled) | Attacker sets `user_metadata.role="admin"` at signup → bypasses admin gate | ✅ Fixed: `context.ts` reads role from `app_metadata` only; regression test rejects spoofed `user_metadata.role="admin"` |
 
 ---
 

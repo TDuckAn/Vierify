@@ -1,18 +1,20 @@
 import type { CreateFastifyContextOptions } from "@trpc/server/adapters/fastify";
 import { TRPCError } from "@trpc/server";
+import type { User } from "@supabase/supabase-js";
 
 import { getSupabaseAdmin } from "./lib/supabase";
 
 export type AuthUser = {
   email?: string;
   id: string;
+  role?: string;
 };
 
 export type Context = {
   user?: AuthUser;
 };
 
-function getBearerToken(authorization: string | undefined): string | undefined {
+export function getBearerToken(authorization: string | undefined): string | undefined {
   if (!authorization) {
     return undefined;
   }
@@ -29,13 +31,26 @@ function getBearerToken(authorization: string | undefined): string | undefined {
   return token;
 }
 
-export async function createContext({
-  req
-}: CreateFastifyContextOptions): Promise<Context> {
-  const token = getBearerToken(req.headers.authorization);
+function getStringMetadataValue(
+  metadata: Record<string, unknown> | undefined,
+  key: string
+): string | undefined {
+  const value = metadata?.[key];
+
+  return typeof value === "string" ? value : undefined;
+}
+
+function getUserRole(user: User): string | undefined {
+  return getStringMetadataValue(user.app_metadata, "role");
+}
+
+export async function getUserFromAuthorization(
+  authorization: string | undefined
+): Promise<AuthUser | undefined> {
+  const token = getBearerToken(authorization);
 
   if (!token) {
-    return {};
+    return undefined;
   }
 
   const {
@@ -51,9 +66,38 @@ export async function createContext({
   }
 
   return {
-    user: {
-      email: user.email,
-      id: user.id
-    }
+    email: user.email,
+    id: user.id,
+    role: getUserRole(user)
+  };
+}
+
+export async function requireAdminUser(authorization: string | undefined): Promise<AuthUser> {
+  const user = await getUserFromAuthorization(authorization);
+
+  if (!user) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Authentication required."
+    });
+  }
+
+  if (user.role !== "admin") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Admin role required."
+    });
+  }
+
+  return user;
+}
+
+export async function createContext({
+  req
+}: CreateFastifyContextOptions): Promise<Context> {
+  const user = await getUserFromAuthorization(req.headers.authorization);
+
+  return {
+    user
   };
 }

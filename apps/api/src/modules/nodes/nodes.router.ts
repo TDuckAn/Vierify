@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 
-import { protectedProcedure, router } from "../../trpc";
+import { adminProcedure, protectedProcedure, router } from "../../trpc";
 import {
   createNodeSchema,
   getNodeSchema,
@@ -26,7 +26,7 @@ export const nodesRouter = router({
     return node;
   }),
   list: protectedProcedure.input(listNodesSchema).query(({ input }) => listNodes(input)),
-  updateKybStatus: protectedProcedure
+  updateKybStatus: adminProcedure
     .input(updateKybStatusSchema)
     .mutation(async ({ ctx, input }) => {
       const node = await updateKybStatus(input, ctx.user.id);
