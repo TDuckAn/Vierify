@@ -7,8 +7,8 @@ export const proofStatuses = {
 
 export const uiTokens = {
   colors: {
-    chain: "#236C5F",
-    proof: "#2F5EAA",
+    chain: "#14B8A6",
+    proof: "#2563EB",
     surface: "#FFFFFF"
   },
   radius: {

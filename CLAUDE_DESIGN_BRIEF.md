@@ -45,15 +45,20 @@ Minimalist and structured — every element earns its space. The product must fe
 ## 4. Color System
 
 ### Brand Palette
-| Role | Tailwind Token | Hex | Usage |
+
+Two custom tokens are defined in both `apps/web/tailwind.config.ts` and `apps/mobile/tailwind.config.js`. Use these token names — not raw Tailwind scale classes — for all brand colors.
+
+| Role | Class | Hex | Usage |
 |---|---|---|---|
-| Primary | `teal-500` | `#14B8A6` | CTAs, active states, brand accent |
-| Primary dark | `teal-700` | `#0F766E` | Hover states, pressed |
-| Secondary | `blue-600` | `#2563EB` | Links, secondary actions, info |
-| Confirmed / Verified | `emerald-500` | `#10B981` | Blockchain confirmed badge |
-| Pending | `amber-500` | `#F59E0B` | Blockchain pending badge |
-| Destructive | `rose-500` | `#F43F5E` | Errors, delete actions |
+| **Primary (brand)** | `bg-chain` / `text-chain` / `border-chain` | `#14B8A6` | CTAs, active states, brand accent, nav highlights |
+| Primary hover | `bg-chain/80` (opacity) or `teal-600` | `#0D9488` | Hover/pressed states |
+| **Secondary (proof)** | `bg-proof` / `text-proof` / `border-proof` | `#2563EB` | Links, secondary buttons, blockchain info |
+| Confirmed / Verified | `emerald-500` | `#10B981` | `bc_status=1` badge, success states |
+| Pending | `amber-500` | `#F59E0B` | `bc_status=0` badge, processing states |
+| Destructive | `rose-500` | `#F43F5E` | Errors, delete confirmations |
 | Neutral | `slate-*` scale | — | Text, borders, backgrounds |
+
+> `chain` = supply chain / brand teal. `proof` = blockchain proof / blue. Both tokens are identical in web and mobile configs — use them on both platforms.
 
 ### Light / Dark Mode
 Both modes are required. Use Tailwind `dark:` prefix throughout.
@@ -227,24 +232,38 @@ app/
 
 ## 9. Pricing Page
 
-Required section on the landing page. Five-tier structure. Use a horizontally scrollable card layout on mobile, a full comparison table on desktop. Highlight "Professional" as best choice.
+Required section on the landing page. Five-tier structure (all five tiers and exact prices are fixed — do not change them). Use a horizontally scrollable card layout on mobile, a full comparison table on desktop. Highlight "Professional" as best choice with a teal border + "Lựa chọn tốt nhất" badge.
 
-| | Free | Basic | Professional | Enterprise |
-|---|---|---|---|---|
-| **Giá** | 0đ (3 tháng) | 99.000đ/tháng | 499.000đ/tháng | Liên hệ |
-| Lô hàng/tháng | 30 | 200 | Không giới hạn | Không giới hạn |
-| Người dùng | 1 | 2 | 10 | Không giới hạn |
-| Truy xuất cơ bản | ✓ | ✓ | ✓ | ✓ |
-| Xác minh blockchain | — | ✓ | ✓ | ✓ |
-| GS1 Barcode | — | ✓ | ✓ | ✓ |
-| Upload tài liệu | — | — | ✓ | ✓ |
-| Kết nối chuỗi phả hệ | — | — | ✓ | ✓ |
-| Dashboard quản lý | — | — | Cơ bản | Nâng cao |
-| Hỗ trợ ưu tiên | — | — | ✓ | ✓ |
-| Account Manager | — | — | — | ✓ |
-| Tùy biến sơ đồ | — | — | — | ✓ |
+### Tiers and prices (fixed)
 
-**Visual treatment:** Card for each tier. Professional tier: teal border + "Phổ biến nhất" badge (like the reference). Free has a gift icon. Enterprise has a "Liên hệ" CTA button instead of a price.
+| | Free — Trải nghiệm | Basic — Cơ bản | Advanced — Nâng cao | Professional — Chuyên nghiệp | Enterprise — Tập đoàn |
+|---|---|---|---|---|---|
+| **Giá** | 0đ · 3 tháng miễn phí | 99.000đ/tháng | 499.000đ/tháng | 4.999.999đ/tháng | Liên hệ |
+| Số lô hàng/tháng | 30 | 100 | 500–1.000 | Không giới hạn | Không giới hạn |
+| Người dùng | 1 | 1 | 5 | 20 | Không giới hạn |
+| Tần suất xác minh | Cuối ngày | 6–12 giờ | 1–2 giờ | Real-time | Real-time |
+
+### Feature matrix (map to Vierify features logically)
+
+| Tính năng | Vierify feature | Free | Basic | Advanced | Professional | Enterprise |
+|---|---|---|---|---|---|---|
+| Sơ đồ hành trình mẫu | B2C trace timeline (QR → origin story) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Xác thực dữ liệu bên thứ 3 | Polygon blockchain proof per batch | — | ✓ | ✓ | ✓ | ✓ |
+| Tích hợp GS1 Barcode | Full GS1 GTIN barcode scan in mobile app | — | — | ✓ | ✓ | ✓ |
+| Dashboard quản lý | Batch management dashboard | — | — | Cơ bản | Nâng cao | Tùy biến |
+| Hệ thống Referral (Mã giới thiệu) | Partner merchant invite codes | — | — | — | ✓ | ✓ |
+| Ưu tiên thẩm định uy tín | Fast-track KYB review (< 24h vs 3–5 ngày) | — | — | — | ✓ | ✓ |
+| Vị trí nổi bật trên Marketplace | Featured supplier listing on Vierify Marketplace | — | — | — | ✓ | ✓ |
+| Account Manager riêng | Dedicated account manager + SLA support | — | — | — | — | ✓ |
+| Market Insights & Đối soát | Scan analytics, QR engagement, supply chain reports | — | — | — | — | ✓ |
+| Tùy biến sơ đồ hành trình | White-label trace page + custom domain | — | — | — | — | ✓ |
+
+### Visual treatment
+- Each tier is a card. Professional: teal border, "Lựa chọn tốt nhất" badge at top (teal, like reference image).
+- Free tier: gift icon header.
+- Enterprise tier: no price shown — "Liên hệ" CTA button replaces price.
+- CTA per tier: Free → "Bắt đầu miễn phí", Basic/Advanced/Professional → "Chọn gói này", Enterprise → "Liên hệ với chúng tôi".
+- On mobile: horizontal scroll with snapping (one card visible at a time). On desktop: all five columns visible.
 
 ---
 

@@ -4,6 +4,7 @@ export type TraceNode = {
   is_individual?: boolean;
   name?: string | null;
   node_address?: string | null;
+  node_type?: string | null;
   [key: string]: unknown;
 };
 
@@ -20,11 +21,22 @@ export type TraceBatchPayload = {
   [key: string]: unknown;
 };
 
+export type ParentBatchEntry = {
+  bc_status?: number | null;
+  created_at?: string | null;
+  gs1_trace_id?: string | null;
+  id: string;
+  name?: string | null;
+  supply_chain_node?: TraceNode | TraceNode[] | null;
+  tx_hash?: string | null;
+};
+
 export type TraceTimelineResult =
   | {
       data: TraceBatchPayload;
       id: string;
       ok: true;
+      parents: ParentBatchEntry[];
     }
   | {
       error: string;
@@ -67,6 +79,7 @@ function anonymiseTracePayload(payload: TraceBatchPayload): TraceBatchPayload {
 export async function getTraceTimeline(id: string): Promise<TraceTimelineResult> {
   try {
     const supabase = createServerSupabaseClient();
+
     const { data, error } = await supabase
       .from("trace_batch")
       .select("*, supply_chain_node(*)")
@@ -74,25 +87,49 @@ export async function getTraceTimeline(id: string): Promise<TraceTimelineResult>
       .single();
 
     if (error) {
-      return {
-        error: error.message,
-        id,
-        ok: false
-      };
+      return { error: error.message, id, ok: false };
+    }
+
+    const batch = data as TraceBatchPayload & { id: string };
+
+    // Fetch parent batch IDs from genealogy table
+    const { data: genealogyRows } = await supabase
+      .from("batch_genealogy")
+      .select("parent_batch_id")
+      .eq("child_batch_id", batch.id);
+
+    let parents: ParentBatchEntry[] = [];
+
+    if (genealogyRows && genealogyRows.length > 0) {
+      const parentIds = genealogyRows.map((r) => r.parent_batch_id as string);
+      const { data: parentRows } = await supabase
+        .from("trace_batch")
+        .select("id, name, gs1_trace_id, bc_status, tx_hash, created_at, supply_chain_node(*)")
+        .in("id", parentIds)
+        .order("created_at", { ascending: true });
+
+      if (parentRows) {
+        parents = (parentRows as ParentBatchEntry[]).map((p) => {
+          const node = p.supply_chain_node;
+          if (Array.isArray(node)) {
+            return { ...p, supply_chain_node: node.map(anonymiseNode) };
+          }
+          if (node) {
+            return { ...p, supply_chain_node: anonymiseNode(node as TraceNode) };
+          }
+          return p;
+        });
+      }
     }
 
     return {
-      data: anonymiseTracePayload(data as TraceBatchPayload),
+      data: anonymiseTracePayload(batch),
       id,
-      ok: true
+      ok: true,
+      parents
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown trace fetch error.";
-
-    return {
-      error: message,
-      id,
-      ok: false
-    };
+    return { error: message, id, ok: false };
   }
 }

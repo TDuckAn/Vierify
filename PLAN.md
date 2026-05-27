@@ -1,6 +1,6 @@
 # Vierify — Project Plan
 
-> **Week 5 / 14** | Sprint 2 deadline: end of Week 7 | v1 deadline: end of Week 14
+> **Week 7 / 14** | Sprint 2 ✅ complete | Sprint 3 starts Week 8 | v1 deadline: end of Week 14
 > Task legend: `☐` not started · `🔄` in progress · `✅` done · `❌` blocked
 
 ---
@@ -120,7 +120,7 @@ audit_log          id · actor_id · action · resource_id · created_at  ← ap
 
 ---
 
-## Current Sprint — Week 5–7
+## Sprint 2 — Week 5–7 (Complete)
 
 ### Backend (Codex — complete before UI work starts)
 
@@ -131,7 +131,7 @@ audit_log          id · actor_id · action · resource_id · created_at  ← ap
 | T17 | QR code generation (GS1 GTIN format) | Codex | ✅ | Reviewed by Claude · `GET /batches/:id/qr` returns PNG data URL · `encodeURIComponent` on gs1TraceId (handles `/` in GS1 batch codes) · `CONSUMER_TRACE_BASE_URL` env override · public endpoint (no auth) · Codex shipped 3 tests: generation, URL-encoding, NOT_FOUND |
 | T18 | B2C timeline: blockchain proof display | Codex | ✅ | Reviewed by Claude · `tx_hash` + Polygonscan Amoy link (`amoy.polygonscan.com/tx/{txHash}`) · emerald/amber `bc_status` badge (confirmed only when `bc_status===1 && tx_hash`) · pending state with explanatory text · PII anonymisation enforced in `data.ts` ✅ · mobile data wired via `bc_status`/`tx_hash` in API response (visual badge by Claude Design) · ⚠️ DEPENDENCY: Supabase anon RLS policy needed on `trace_batch` + `supply_chain_node` (pre-existing T06 debt) |
 | T19 | B2B KYB approval flow + admin endpoint | Codex | ✅ | Reviewed by Claude · `PATCH /admin/nodes/:id/kyb` · `requireAdminUser` is first line of handler ✅ · `adminProcedure` middleware gates tRPC route ✅ · merchant blocked until `kyb_status=approved` ✅ · `audit_log` entry on each status change ✅ · Security fix applied: admin role reads `app_metadata.role` only |
-| T20 | Mobile offline mode: expo-sqlite queue | Codex | ☐ | Scan works with no network · local queue flushes to API on reconnect · no data loss on crash |
+| T20 | Mobile offline mode: expo-sqlite queue | Codex | ✅ | `expo-sqlite` queue for offline batch creates · queued work survives crashes · app flushes on launch/foreground/interval · duplicate GS1 retries are treated as already synced · queued batches appear in mobile list |
 
 ### Testing (Claude — written after each backend task ships)
 
@@ -139,29 +139,60 @@ audit_log          id · actor_id · action · resource_id · created_at  ← ap
 |---|---|---|---|---|
 | T21 | Vitest: genealogy + mass balance + circular ref | Claude | ✅ | Written by Claude · augmented Codex baseline · added: exact boundary cases, DEFAULT_WASTE_TOLERANCE assertion, audit_log verification, full getGenealogy coverage (4 cases: orphan / parent view / child view / middle-chain) |
 | T22 | Vitest: document upload + doc_hash + KYB flow | Claude | ✅ | Written by Claude · 13 cases in `documents-kyb.test.ts` · upload: happy path, empty file, >10 MB, NOT_FOUND, audit_log, enqueueHashBatchJob · KYB: updateKybStatus + audit_log, NOT_FOUND, createBatch blocked for pending/rejected/suspended (it.each), unblocked after approval · RBAC: admin access, FORBIDDEN (no role), UNAUTHORIZED (no token / bad token) |
-| T14 | Playwright smoke tests (web flows) | Claude | ☐ | After Claude Design ships Sprint 2 UI |
+| T14 | Playwright smoke tests (web flows) | Claude | ✅ | Written by Claude · `marketing.spec.ts`: 12 cases — page load, nav CTA, all 5 pricing tiers, "Lựa chọn tốt nhất" badge, dark mode toggle + localStorage persistence, dark mode survives reload, how-it-works 3 steps, features section, footer branding · `qr-timeline.spec.ts`: 16 cases — header always visible (incl. "Hành trình chuỗi cung ứng" smoke test), not-found heading + error detail + home link, confirmed batch (skip if no `SUPABASE_SERVICE_KEY`): name/GS1 ID/emerald badge/tx_hash/Polygonscan link/stats/footer/blockchain section heading/journey heading/current batch in timeline/empty-parent fallback, 375px mobile no horizontal overflow · `playwright.config.ts` with `webServer` + globalSetup/Teardown · CI `playwright` job added (needs `quality` to pass; uploads HTML report artifact) |
 
-### Claude Design (starts after T15–T19 backend done)
+### Claude Design (Sprint 2 — shipped)
 
-> Brief written: `CLAUDE_DESIGN_BRIEF.md` — hand this file to Claude Design at session start.
+> Brief: `CLAUDE_DESIGN_BRIEF.md`. Implemented 2026-05-28.
 
 | # | Task | Owner | Status | Notes |
 |---|---|---|---|---|
-| — | Web: marketing landing + pricing + i18n (vi/en) | Claude Design | ☐ | shadcn/ui · Be Vietnam Pro font · framer-motion scroll animations · light/dark mode · 5-tier pricing table |
-| — | Web B2C: trace timeline visual | Claude Design | ☐ | Skeleton exists from T18 · add full visual treatment per brief §6.2 |
-| — | Mobile MerchantApp: all screens | Claude Design | ☐ | NativeWind v4 · expo-router v6 · reanimated v4 APIs ONLY · screens per brief §7 |
+| — | Web: marketing landing + pricing + light/dark mode | Claude Design | ✅ | Be Vietnam Pro + JetBrains Mono via next/font · FOUC-safe dark mode (localStorage + inline script) · Nav/Hero/TrustBar/Problem-Solution/HowItWorks/Features/Pricing/CTA/Footer · 5-tier pricing table with feature comparison · `chain`/`proof` tokens throughout · `ScrollReveal` component (IntersectionObserver) wraps all below-fold sections — stagger-free, unobserves after first reveal |
+| — | Web B2C: trace timeline visual | Claude Design | ✅ | Full visual treatment · emerald/amber bc_status badge · Polygonscan link · stats row · supply chain timeline skeleton · doc_hash section · Vietnamese copy |
+| — | Mobile MerchantApp: all screens | Claude Design | ✅ | NativeWind v4 · `global.css` import fixed · `(app)` Tab group (Lô hàng/Quét mã/Hồ sơ) · Login with KYB-blocked banner · Batch list FlatList + pull-to-refresh + empty state · Scan screen with frame overlay · Profile with KYB badge + plan info |
+| — | Mobile: batch detail `(batches)/[id].tsx` | Claude | ✅ | QR modal (REST `/batches/:id/qr`) · blockchain badge (emerald/amber) · tx_hash share + Polygonscan Linking · doc_hash section · parent batch genealogy list · NativeWind throughout |
+| — | Mobile: create batch `(batches)/new.tsx` | Claude | ✅ | KYB-approved node selector (trpc.nodes.list) · name/qty/UOM chips/GS1 form · inline GS1 regex validation · trpc.batches.create.mutate · navigates to detail on success · GPS auto-detect placeholder section (device location recorded on submit) · "Kết nối lô hàng cha" UI stub (+ Thêm CTA, links after batch creation) |
+
+---
+
+## Current Sprint — Week 8–10 (Sprint 3)
+
+> **Owner summary:** Codex owns T24–T28. Claude writes T29 + T30. Claude Design owns i18n (language toggle). All Sprint 2 tail tasks (T14/T20/T23 + batch detail/create screens) are ✅.
+
+See Sprint 3 task table in the Roadmap section below.
 
 ---
 
 ## Roadmap
 
 ### Sprint 3 — Week 8–10
-- Multi-tenant organisations (B2B node management)
-- Role-based access control (admin / merchant / viewer)
-- Oracle API integration (Vietnam Tax Authority for KYB)
-- Supabase Realtime: live scan count updates
-- Sentry on all platforms
-- E2E tests: Playwright (web) + Vitest integration (API)
+
+#### Immediate (Week 8) — Complete Sprint 2 tail
+
+| # | Task | Owner | Priority | Acceptance criteria |
+|---|---|---|---|---|
+| T14 | Playwright smoke tests (web) | Claude | P0 | ✅ Done — see Sprint 2 Testing row for full 28-case breakdown |
+| T20 | Mobile offline: expo-sqlite queue | Codex | P0 | ✅ Done · scan/create flows tolerate no network · SQLite queue auto-flushes on launch/foreground/interval · crash-safe · duplicate GS1 retries treated as synced |
+| T23 | Supabase RLS: anon SELECT on `trace_batch` + `supply_chain_node` | Codex | P0 | ✅ Done · anon SELECT policy applied · B2C trace page confirmed working with anon key · PII anonymisation enforced in `data.ts` |
+
+#### Core Sprint 3 (Week 8–10)
+
+| # | Task | Owner | Priority | Acceptance criteria |
+|---|---|---|---|---|
+| T24 | RBAC: admin / merchant / viewer roles | Codex | P1 | `app_metadata.role` controls access · viewer: read-only tRPC · merchant: create/link batches · admin: KYB + all · Vitest coverage |
+| T25 | Multi-tenant orgs: node membership | Codex | P1 | `supply_chain_node` has `org_id` · merchant belongs to exactly one org · batches scoped to org · mass-balance check stays within org boundary |
+| T26 | Supabase Realtime: live scan count | Codex | P2 | `trace_batch.scan_count` increments via Realtime channel on B2C page · no full page reload · graceful fallback if Realtime is unavailable |
+| T27 | Sentry: web + API error tracking | Codex | P2 | `SENTRY_DSN` env var · unhandled errors captured on both surfaces · source maps uploaded in CI · free-tier 5K errors/month |
+| T28 | Oracle / Vietnam Tax Authority KYB stub | Codex | P3 | `POST /admin/nodes/:id/kyb/verify` calls stub that validates tax code format · real VTA integration deferred to Sprint 4 |
+| T29 | Vitest: RBAC + multi-tenant tests | Claude | P1 | Written after T24/T25 ship · covers: viewer blocked from create, merchant blocked from other org's batches, admin can access all |
+| T30 | Playwright: authenticated B2B flows | Claude | P2 | Login → create batch → link parent → view QR · requires T24 complete |
+
+#### Outstanding debt carried from Sprint 2
+
+| Item | Owner | Note |
+|---|---|---|
+| `(app)` router types auto-regen | Codex | Run `expo start` once on CI to regenerate `.expo/types/router.d.ts` — currently manually patched |
+| Language toggle (vi/en) full i18n | Claude Design | Stubbed in UI — wire `next-intl` or React context in Sprint 3 |
 
 ### Sprint 4 — Week 11–13
 - Play Store submission via EAS Submit
@@ -192,6 +223,10 @@ audit_log          id · actor_id · action · resource_id · created_at  ← ap
 | reanimated v4 API breaks Claude Design animations | UI regression in mobile | Claude Design must use v4 APIs (`useSharedValue`, `useAnimatedStyle`); no v3 patterns |
 | Admin KYB endpoint lacks RBAC check | Any authenticated user can approve KYB | ✅ Role check is first line of REST handler; T22 tests verify 403 for non-admin |
 | `getUserRole` falls back to `user_metadata` (user-controlled) | Attacker sets `user_metadata.role="admin"` at signup → bypasses admin gate | ✅ Fixed: `context.ts` reads role from `app_metadata` only; regression test rejects spoofed `user_metadata.role="admin"` |
+| Supabase anon RLS not configured | B2C `/trace/[id]` returns empty — QR scanning is broken in production | ✅ Fixed — anon SELECT policy applied on `trace_batch` + `supply_chain_node` |
+| Mobile `(app)` router types stale | TypeScript misses new routes until `expo start` regenerates `.expo/types/router.d.ts` | Manually patched for now; add `expo export` step to CI to keep types fresh |
+| Batch detail + create screens missing | Merchants can view list but cannot create or inspect a batch from the app | ✅ Fixed — `(batches)/[id].tsx` + `(batches)/new.tsx` shipped; BatchCard is tappable; `+` routes to create form |
+| Be Vietnam Pro/JetBrains Mono font load fails in CI | Build succeeds but fonts fall back to system fonts silently | Next.js `next/font` caches at build time — verify with a Vercel preview deploy before Sprint 3 |
 
 ---
 
