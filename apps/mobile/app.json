@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "Vierify Merchant",
+    "slug": "vierify-merchant",
+    "scheme": "vierify",
+    "version": "0.0.0",
+    "platforms": ["ios", "android"],
+    "orientation": "portrait",
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
