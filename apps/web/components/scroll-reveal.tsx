@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactElement, type ReactNode } from "react";
 
 export function ScrollReveal({
   children,
@@ -8,7 +8,7 @@ export function ScrollReveal({
 }: {
   children: ReactNode;
   delay?: number;
-}) {
+}): ReactElement {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
