@@ -1,0 +1,115 @@
+import { desc, eq } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
+
+import { getDb } from "../../db/client";
+import { auditLog, supplyChainNode, traceBatch } from "../../db/schema";
+import { enqueueHashBatchJob } from "../../queues/blockchain.queue";
+import type {
+  createBatchSchema,
+  listBatchesSchema
+} from "./batches.schema";
+import type { z } from "zod";
+
+type NodeProjection = typeof supplyChainNode.$inferSelect;
+
+function anonymiseNode(node: NodeProjection): NodeProjection {
+  if (!node.isIndividual) {
+    return node;
+  }
+
+  return {
+    ...node,
+    name: "***",
+    nodeAddress: "***"
+  };
+}
+
+export async function createBatch(input: z.infer<typeof createBatchSchema>, actorId: string) {
+  const db = getDb();
+  const [node] = await db
+    .select()
+    .from(supplyChainNode)
+    .where(eq(supplyChainNode.id, input.nodeId));
+
+  if (!node) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Supply chain node not found."
+    });
+  }
+
+  if (node.kybStatus !== "approved") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "B2B account cannot create batches until KYB is approved."
+    });
+  }
+
+  const [batch] = await db
+    .insert(traceBatch)
+    .values({
+      docHash: input.docHash,
+      gpsLat: input.gpsLat?.toString(),
+      gpsLng: input.gpsLng?.toString(),
+      gs1TraceId: input.gs1TraceId,
+      name: input.name,
+      nodeId: input.nodeId,
+      pinHash: input.pinHash,
+      quantity: input.quantity.toString(),
+      uom: input.uom
+    })
+    .returning();
+
+  await db.insert(auditLog).values({
+    action: "batch.create",
+    actorId,
+    resourceId: batch.id
+  });
+
+  await enqueueHashBatchJob({ batchId: batch.id });
+
+  return batch;
+}
+
+export async function getBatch(id: string) {
+  const db = getDb();
+  const [batch] = await db.select().from(traceBatch).where(eq(traceBatch.id, id));
+
+  return batch;
+}
+
+export async function getBatchByTraceId(gs1TraceId: string) {
+  const db = getDb();
+  const [row] = await db
+    .select({
+      batch: traceBatch,
+      node: supplyChainNode
+    })
+    .from(traceBatch)
+    .innerJoin(supplyChainNode, eq(traceBatch.nodeId, supplyChainNode.id))
+    .where(eq(traceBatch.gs1TraceId, gs1TraceId));
+
+  if (!row) {
+    return undefined;
+  }
+
+  return {
+    batch: row.batch,
+    node: anonymiseNode(row.node)
+  };
+}
+
+export async function listBatches(input: z.infer<typeof listBatchesSchema>) {
+  const db = getDb();
+
+  if (input.nodeId) {
+    return db
+      .select()
+      .from(traceBatch)
+      .where(eq(traceBatch.nodeId, input.nodeId))
+      .orderBy(desc(traceBatch.createdAt))
+      .limit(input.limit);
+  }
+
+  return db.select().from(traceBatch).orderBy(desc(traceBatch.createdAt)).limit(input.limit);
+}
