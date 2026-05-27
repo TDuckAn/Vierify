@@ -1,6 +1,6 @@
 import { brandName, proofStatuses } from "@vierify/ui";
 
-export default function HomePage() {
+export default function HomePage(): React.ReactNode {
   return (
     <main className="min-h-screen bg-white px-6 py-12 text-slate-950">
       <section className="mx-auto flex max-w-5xl flex-col gap-6">

@@ -10,6 +10,7 @@ artifacts
 cache
 coverage
 dist
+dist-electron
 node_modules
 out
 build

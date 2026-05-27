@@ -4,5 +4,12 @@
     "allowJs": true,
     "jsx": "react-jsx"
   },
-  "include": ["app/**/*.ts", "app/**/*.tsx", "expo-env.d.ts", "lib/**/*.ts"]
+  "include": [
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "expo-env.d.ts",
+    "nativewind-env.d.ts",
+    "lib/**/*.ts",
+    ".expo/types/**/*.ts"
+  ]
 }

@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json && vite build",
+    "build": "tsc -p tsconfig.json",
     "dev": "pnpm build && electron .",
     "lint": "tsc --noEmit -p tsconfig.json",
     "package": "pnpm build && electron-builder",
@@ -15,18 +15,10 @@
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
-  "dependencies": {
-    "@vierify/ui": "workspace:*",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  },
+  "dependencies": {},
   "devDependencies": {
-    "@types/react": "^18.3.18",
-    "@types/react-dom": "^18.3.5",
-    "@vitejs/plugin-react": "^4.3.4",
     "electron": "32.2.8",
     "electron-builder": "^26.8.1",
-    "vite": "^6.0.5",
     "vitest": "^2.1.8"
   },
   "build": {
@@ -38,7 +30,6 @@
     },
     "files": [
       "dist-electron/**/*",
-      "dist/renderer/**/*",
       "package.json"
     ],
     "mac": {

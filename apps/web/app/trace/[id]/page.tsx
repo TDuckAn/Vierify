@@ -6,7 +6,9 @@ type TracePageProps = {
   }>;
 };
 
-export default async function TracePage({ params }: TracePageProps) {
+export default async function TracePage({
+  params
+}: TracePageProps): Promise<React.ReactNode> {
   const { id } = await params;
   const timeline = await getTraceTimeline(id);
 

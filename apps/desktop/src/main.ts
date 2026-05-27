@@ -1,7 +1,14 @@
 import { app, BrowserWindow } from "electron";
 
+const packagedWebUrl = "https://vierify.vercel.app";
+const localWebUrl = "http://localhost:3000";
+
 function getWebRendererUrl(): string {
-  return process.env.VIERIFY_WEB_URL ?? "http://localhost:3000";
+  if (process.env.VIERIFY_WEB_URL) {
+    return process.env.VIERIFY_WEB_URL;
+  }
+
+  return app.isPackaged ? packagedWebUrl : localWebUrl;
 }
 
 async function createWindow() {
