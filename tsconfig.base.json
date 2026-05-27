@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
+    "ignoreDeprecations": "5.0",
+    "baseUrl": ".",
+    "declaration": true,
+    "declarationMap": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmitOnError": true,
+    "paths": {
+      "@vierify/api/*": ["apps/api/src/*"],
+      "@vierify/api-client": ["packages/api-client/src/index.ts"],
+      "@vierify/api-client/*": ["packages/api-client/src/*"],
+      "@vierify/blockchain": ["packages/blockchain/src/index.ts"],
+      "@vierify/blockchain/*": ["packages/blockchain/src/*"],
+      "@vierify/ui": ["packages/ui/src/index.ts"],
+      "@vierify/ui/*": ["packages/ui/src/*"]
+    },
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ES2022"
+  }
+}

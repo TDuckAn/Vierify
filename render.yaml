@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: vierify-api
+    runtime: node
+    plan: free
+    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile && corepack pnpm --filter @vierify/api build
+    startCommand: corepack pnpm --filter @vierify/api start
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      - key: UPSTASH_REDIS_URL
+        sync: false
+      - key: ENABLE_BLOCKCHAIN_WORKER
+        value: "true"
+      - key: POLYGON_AMOY_RPC
+        sync: false
+      - key: WALLET_PRIVATE_KEY
+        sync: false
+      - key: CONTRACT_ADDRESS
+        sync: false
