@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  NODE_VERSION: "20"
+  PNPM_VERSION: "9.15.9"
+
+jobs:
+  # ── Android APK via EAS Build ───────────────────────────────────────────────
+  # T11 — requires EAS_TOKEN secret + eas.json configured in apps/mobile
+  android:
+    name: Android APK (EAS Build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Android APK
+        run: pnpm --filter @vierify/mobile eas build --platform android --profile preview --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EAS_TOKEN }}
+
+  # ── Electron Windows + macOS via Electron Builder ──────────────────────────
+  # T12 — unsigned builds OK for MVP; add code signing certs in Sprint 4
+  desktop:
+    name: Desktop Builds (Electron Builder)
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: "*.exe"
+          - os: macos-latest
+            artifact: "*.dmg"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build desktop app
+        run: pnpm --filter @vierify/desktop build
+
+      - name: Upload artifact to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: apps/desktop/dist/${{ matrix.artifact }}
