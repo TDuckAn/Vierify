@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 
 // Fixed GS1 trace ID used by qr-timeline.spec.ts confirmed-state tests.
 // globalSetup upserts this batch; globalTeardown deletes it.
@@ -19,7 +20,8 @@ export default async function globalSetup(): Promise<void> {
   }
 
   const supabase = createClient(url, serviceKey, {
-    auth: { persistSession: false }
+    auth: { persistSession: false },
+    realtime: { transport: ws as unknown as typeof WebSocket }
   });
 
   // Clean up any leftover fixture from a previous interrupted run.

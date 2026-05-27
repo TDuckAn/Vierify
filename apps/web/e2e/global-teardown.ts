@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 
 import { TEST_GS1_TRACE_ID } from "./global-setup";
 
@@ -9,7 +10,8 @@ export default async function globalTeardown(): Promise<void> {
   if (!url || !serviceKey) return;
 
   const supabase = createClient(url, serviceKey, {
-    auth: { persistSession: false }
+    auth: { persistSession: false },
+    realtime: { transport: ws as unknown as typeof WebSocket }
   });
 
   await supabase
