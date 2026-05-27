@@ -1,0 +1,38 @@
+{
+  "name": "@vierify/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./router": "./src/router.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "dev": "tsx src/index.ts",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "start": "tsx src/index.ts",
+    "start:worker": "tsx src/worker.ts",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.2",
+    "@supabase/supabase-js": "^2.47.10",
+    "@trpc/server": "^11.0.0",
+    "bullmq": "^5.34.2",
+    "drizzle-orm": "^0.38.3",
+    "ethers": "^6.13.4",
+    "fastify": "^5.1.0",
+    "ioredis": "^5.4.2",
+    "postgres": "^3.4.5",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.30.1",
+    "dotenv": "^16.4.7",
+    "tsx": "^4.19.2",
+    "vitest": "^2.1.8"
+  }
+}
