@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { createBrowserSupabaseClient } from "../../../lib/supabase";
 
-export default function LoginPage() {
+export default function LoginPage(): React.ReactNode {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

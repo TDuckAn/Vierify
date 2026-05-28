@@ -10,7 +10,7 @@ const GS1_REGEX = /^01[0-9]{14}10[A-Za-z0-9./-]{1,20}$/;
 
 const UNITS = ["kg", "tấn", "lít", "thùng", "cái", "g", "mg", "m³"] as const;
 
-export default function NewBatchPage() {
+export default function NewBatchPage(): React.ReactNode {
   const router = useRouter();
   const { data: nodes } = trpc.nodes.list.useQuery({ limit: 100 });
   const approvedNodes = nodes?.filter((n) => n.kybStatus === "approved") ?? [];

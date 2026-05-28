@@ -9,7 +9,7 @@ import { createBrowserSupabaseClient } from "../../../../lib/supabase";
 
 type Props = { params: { id: string } };
 
-export default function BatchDetailPage({ params }: Props) {
+export default function BatchDetailPage({ params }: Props): React.ReactNode {
   const { id } = params;
   const { data: batch, isPending, isError } = trpc.batches.get.useQuery({ id });
   const { data: genealogy } = trpc.genealogy.get.useQuery({ batchId: id });

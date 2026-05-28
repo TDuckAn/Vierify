@@ -7,7 +7,7 @@ import { useState } from "react";
 import { createBrowserSupabaseClient } from "./supabase";
 import { getApiUrl, trpc } from "./trpc";
 
-export function TRPCProvider({ children }: { children: React.ReactNode }) {
+export function TRPCProvider({ children }: { children: React.ReactNode }): React.ReactNode {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: { queries: { staleTime: 30_000, retry: 1 } }
   }));

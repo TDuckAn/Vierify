@@ -9,7 +9,7 @@ const BC_STATUS: Record<number, { label: string; cls: string }> = {
   1: { label: "Đã xác minh", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" }
 };
 
-export default function DashboardPage() {
+export default function DashboardPage(): React.ReactNode {
   const { data: batches, isPending, isError } = trpc.batches.list.useQuery({ limit: 100 });
 
   return (

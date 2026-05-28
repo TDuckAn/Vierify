@@ -8,7 +8,7 @@ import { createBrowserSupabaseClient } from "../../lib/supabase";
 import { TRPCProvider } from "../../lib/trpc-provider";
 import { ThemeToggle } from "../../components/theme-toggle";
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }): React.ReactNode {
   const router = useRouter();
   const pathname = usePathname();
   const [checking, setChecking] = useState(true);
