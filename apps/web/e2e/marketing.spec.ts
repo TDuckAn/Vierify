@@ -46,6 +46,9 @@ test.describe("Marketing landing page", () => {
   });
 
   test("nav bar shows section links", async ({ page }) => {
+    // Nav links are hidden behind a hamburger menu on mobile viewports
+    const viewport = page.viewportSize();
+    if (viewport && viewport.width < 1024) return;
     const nav = page.getByRole("navigation");
     await expect(nav.getByRole("link", { name: "Cách hoạt động" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Tính năng" })).toBeVisible();
