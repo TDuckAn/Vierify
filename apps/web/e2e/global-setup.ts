@@ -11,6 +11,10 @@ export const TEST_TX_HASH =
 // still includes the Playwright fixture node/batch.
 const TEST_ORG_ID = "00000000-0000-0000-0000-000000000001";
 
+// Test merchant credentials — seeded by globalSetup, used by b2b-dashboard.spec.ts.
+export const TEST_MERCHANT_EMAIL = "playwright-merchant@test.internal";
+export const TEST_MERCHANT_PASSWORD = "PlaywrightMerchant2025!";
+
 export default async function globalSetup(): Promise<void> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_KEY;
@@ -83,4 +87,27 @@ export default async function globalSetup(): Promise<void> {
   }
 
   console.log(`✓ Playwright: seeded test batch gs1_trace_id=${TEST_GS1_TRACE_ID}`);
+
+  // Seed the test merchant user for b2b-dashboard.spec.ts.
+  const { data: { users } } = await supabase.auth.admin.listUsers();
+  const existing = users.find((u) => u.email === TEST_MERCHANT_EMAIL);
+
+  if (existing) {
+    await supabase.auth.admin.updateUserById(existing.id, {
+      app_metadata: { role: "merchant", org_id: TEST_ORG_ID }
+    });
+  } else {
+    const { error: userErr } = await supabase.auth.admin.createUser({
+      email: TEST_MERCHANT_EMAIL,
+      password: TEST_MERCHANT_PASSWORD,
+      app_metadata: { role: "merchant", org_id: TEST_ORG_ID },
+      email_confirm: true
+    });
+    if (userErr) {
+      console.error("Playwright global-setup: failed to create test merchant", userErr);
+      return;
+    }
+  }
+
+  console.log(`✓ Playwright: seeded test merchant email=${TEST_MERCHANT_EMAIL}`);
 }

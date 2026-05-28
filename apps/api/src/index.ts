@@ -20,6 +20,7 @@ import {
 } from "./modules/documents/documents.service";
 import { linkGenealogySchema } from "./modules/genealogy/genealogy.schema";
 import { linkGenealogy } from "./modules/genealogy/genealogy.service";
+import { verifyKybTaxCode } from "./modules/kyb/kyb.service";
 import { startBlockchainWorker } from "./queues/blockchain.worker";
 import { appRouter } from "./router";
 import { updateKybStatusSchema } from "./modules/nodes/nodes.schema";
@@ -71,6 +72,10 @@ const batchQrParamsSchema = z.object({
 });
 
 const updateKybParamsSchema = z.object({
+  id: z.string().uuid()
+});
+
+const verifyKybParamsSchema = z.object({
   id: z.string().uuid()
 });
 
@@ -280,6 +285,41 @@ server.patch("/admin/nodes/:id/kyb", async (request, reply) => {
     }
 
     return reply.send({ node });
+  } catch (error) {
+    if (error instanceof TRPCError) {
+      return reply.code(getHttpStatusFromTrpcError(error)).send({
+        error: error.message
+      });
+    }
+
+    request.log.error(error);
+    captureException(error);
+
+    return reply.code(500).send({
+      error: "Internal server error."
+    });
+  }
+});
+
+server.post("/admin/nodes/:id/kyb/verify", async (request, reply) => {
+  try {
+    const user = await requireAdminUser(request.headers.authorization);
+    const params = verifyKybParamsSchema.safeParse(request.params);
+
+    if (!params.success) {
+      return reply.code(400).send({
+        error: "Invalid node id."
+      });
+    }
+
+    const result = await verifyKybTaxCode(
+      {
+        nodeId: params.data.id
+      },
+      user.id
+    );
+
+    return reply.send(result);
   } catch (error) {
     if (error instanceof TRPCError) {
       return reply.code(getHttpStatusFromTrpcError(error)).send({

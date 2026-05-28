@@ -1,7 +1,8 @@
 # Vierify — Project Plan
 
-> **Week 7 / 14** | Sprint 2 ✅ complete | Sprint 3 🔄 in progress (Week 8) | v1 deadline: end of Week 14
-> **CI status (2026-05-28):** Playwright E2E ✅ green (commit `472b61e`) · 59 passed · 4 skipped · 0 failed
+> **Week 8 / 14** | Sprint 2 ✅ complete | Sprint 3 ✅ complete | Sprint 4 starts Week 11 | v1 deadline: end of Week 14
+> **CI status (2026-05-28):** ✅ green
+> **Agent note:** Codex quota exhausted — GitHub Copilot (GPT 5.2) available for backend tasks via `.github/copilot-instructions.md`
 > Task legend: `☐` not started · `🔄` in progress · `✅` done · `❌` blocked
 
 ---
@@ -156,11 +157,9 @@ audit_log          id · actor_id · action · resource_id · created_at  ← ap
 
 ---
 
-## Current Sprint — Week 8–10 (Sprint 3)
+## Sprint 3 — Week 8–10 ✅ Complete
 
-> **Owner summary:** Codex owns T24–T28. Claude writes T29 + T30. Claude Design owns i18n (language toggle). All Sprint 2 tail tasks (T14/T20/T23 + batch detail/create screens) are ✅.
-
-See Sprint 3 task table in the Roadmap section below.
+> All Sprint 3 tasks ✅. Outstanding debt items below carry into Sprint 4.
 
 ---
 
@@ -184,10 +183,10 @@ See Sprint 3 task table in the Roadmap section below.
 | T25 | Multi-tenant orgs: node membership | Codex | ✅ | P1 | Reviewed by Claude (2026-05-28) · `org_id NOT NULL` on `supply_chain_node` ✅ · `getTenantOrgId()` returns undefined for admins (see-all) ✅ · `getBatch`/`listBatches`/`getNode`/`listNodes` all JOIN-filter by orgId ✅ · cross-org genealogy rejected (CONFLICT) before mass-balance ✅ · `multitenant.test.ts` 3 integration cases ✅ · Minor gaps for T29: `nodes.list` scoping + admin see-all real-DB case |
 | T26 | Supabase Realtime: live scan count | Codex | ✅ | P2 | `trace_batch.scan_count` increments via Realtime channel on B2C page · no full page reload · graceful fallback if Realtime is unavailable |
 | T27 | Sentry: web + API error tracking | Claude | ✅ | P2 | Completed by Claude (2026-05-28) · **Web**: Session Replay added (`replayIntegration`, session 10% / error 100%); `enableLogs: true` on all 3 runtimes; `includeLocalVariables: true` on server; `tunnelRoute: "/monitoring"` in `next.config.mjs` (ad-blocker bypass); `global-error.tsx` UTF-8 encoding bug fixed · **API**: `includeLocalVariables: true` + `enableLogs: true` in `sentry.ts`; `fastifyIntegration` (5xx filter) already present · **CI**: `SENTRY_AUTH_TOKEN`/`SENTRY_DSN`/`SENTRY_ORG`/`SENTRY_PROJECT`/`SENTRY_RELEASE` already wired in build step; source maps deleted after upload |
-| T28 | Oracle / Vietnam Tax Authority KYB stub | Codex | ☐ | P3 | `POST /admin/nodes/:id/kyb/verify` calls stub that validates tax code format · real VTA integration deferred to Sprint 4 |
+| T28 | Oracle / Vietnam Tax Authority KYB stub | Copilot | ✅ | P3 | Reviewed by Claude (2026-05-28) · tRPC `kyb.verifyTaxCode` mutation (consistent with codebase — supersedes REST spec) · `adminProcedure` gates endpoint ✅ · Vietnamese tax code regex `/^\d{10}(-\d{3})?$/` (10-digit enterprise + hyphen branch) ✅ · NOT_FOUND if node missing ✅ · `audit_log` entry `kyb.tax_code.verify` ✅ · returns `{ valid, taxCode, reason? }` ✅ · no external API calls (stub only) ✅ · no schema changes ✅ · wired as `kyb: kybRouter` in root router ✅ · real VTA integration deferred to Sprint 4 |
 | T29 | Vitest: RBAC + multi-tenant tests | Claude | ✅ | P1 | Written by Claude (2026-05-28) · augmented `multitenant.test.ts` with 3 new integration cases: `nodes.list` org scoping, admin (orgId=undefined) sees all orgs/batches, `getGenealogy` returns empty (not 404) for wrong-org batch · Codex `rbac.test.ts` (5 mocked cases) + `multitenant.test.ts` (6 real-DB cases) now cover all T24/T25 acceptance criteria |
-| T31 | Web B2B merchant dashboard (Next.js) | Claude | 🔄 | P2 | `lib/trpc.ts` + `lib/trpc-provider.tsx` (tRPC React+Query client with Bearer auth header) · `(auth)/login` (email/password, Supabase session) · `(dashboard)/layout.tsx` (auth guard, org-aware nav, theme toggle, sign-out) · `(dashboard)/dashboard` (batch list — table desktop / cards mobile, skeleton loading, empty state) · `(dashboard)/batches/new` (create form, inline GS1 regex validation, KYB-pending guard on node selector) · `(dashboard)/batches/[id]` (stats, blockchain badge, tx_hash copy, Polygonscan link, QR load+download, parent genealogy list, doc hash) · Electron desktop inherits automatically |
-| T30 | Playwright: authenticated B2B flows | Claude | ❌ | P2 | **Blocked on T31**: once Claude Design ships the B2B web dashboard, Claude writes: login flow, create-batch form submission, parent-link flow, QR modal visible. Unblocks automatically when T31 is ✅. |
+| T31 | Web B2B merchant dashboard (Next.js) | Claude | ✅ | P2 | Shipped by Claude (2026-05-28) · `lib/trpc.ts` + `lib/trpc-provider.tsx` · `(auth)/login` · `(dashboard)/layout.tsx` (auth guard, nav, sign-out) · `(dashboard)/dashboard` (table desktop / cards mobile) · `(dashboard)/batches/new` (inline GS1 validation) · `(dashboard)/batches/[id]` (stats, badge, tx_hash, QR, genealogy) · async server wrapper `page.tsx` + `BatchDetailClient.tsx` (Next.js 15 PageProps fix) · CI ✅ green |
+| T30 | Playwright: authenticated B2B flows | Claude | ✅ | P2 | Written by Claude (2026-05-28) · `b2b-dashboard.spec.ts` · login page structure (logo, fields, CTA, contact link) · unauthenticated redirect guard (`/dashboard` + `/batches/new` → `/login`) · authenticated dashboard (heading, CTA, nav logo, sign-out) · create form (all fields, GS1 invalid/valid validation, back link, submit disabled on invalid GS1) · skips gracefully if no `SUPABASE_SERVICE_KEY` · globalSetup seeds test merchant via `supabase.auth.admin.createUser` with `app_metadata.role=merchant` |
 
 #### Outstanding debt carried from Sprint 2
 
