@@ -2,27 +2,13 @@ import { expect, test } from "@playwright/test";
 
 test.describe("Marketing landing page", () => {
   test.beforeEach(async ({ page }) => {
-    // Mock IntersectionObserver so ScrollReveal reveals elements immediately in headless CI.
-    // Must be added before goto() so the override is in place when page scripts run.
-    await page.addInitScript(() => {
-      (window as any).IntersectionObserver = class {
-        private _cb: Function;
-        constructor(cb: Function) { this._cb = cb; }
-        observe(el: Element) {
-          setTimeout(() => {
-            this._cb([{
-              isIntersecting: true, target: el, intersectionRatio: 1,
-              boundingClientRect: {}, intersectionRect: {}, rootBounds: null,
-              time: Date.now()
-            }], this);
-          }, 0);
-        }
-        unobserve(_el: Element) {}
-        disconnect() {}
-        takeRecords() { return []; }
-      };
-    });
     await page.goto("/");
+    // ScrollReveal applies opacity:0 until IntersectionObserver fires, which is
+    // unreliable in headless CI and Playwright treats opacity:0 as hidden. Force
+    // the reveal classes to their visible state so visibility assertions are stable.
+    await page.addStyleTag({
+      content: ".reveal, .reveal.visible { opacity: 1 !important; transform: none !important; }"
+    });
   });
 
   // ── Page load ────────────────────────────────────────────────────────────

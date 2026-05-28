@@ -44,7 +44,12 @@ export default async function globalSetup(): Promise<void> {
   } else {
     const { data: newNode, error: nodeErr } = await supabase
       .from("supply_chain_node")
-      .insert({ name: "Playwright Test Farm", is_individual: false, kyb_status: "approved" })
+      .insert({
+        name: "Playwright Test Farm",
+        is_individual: false,
+        node_type: "farm",
+        kyb_status: "approved"
+      })
       .select("id")
       .single();
 
