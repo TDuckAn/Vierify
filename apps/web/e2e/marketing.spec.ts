@@ -2,13 +2,31 @@ import { expect, test } from "@playwright/test";
 
 test.describe("Marketing landing page", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
-    // ScrollReveal applies opacity:0 until IntersectionObserver fires, which is
-    // unreliable in headless CI and Playwright treats opacity:0 as hidden. Force
-    // the reveal classes to their visible state so visibility assertions are stable.
-    await page.addStyleTag({
-      content: ".reveal, .reveal.visible { opacity: 1 !important; transform: none !important; }"
+    // ScrollReveal starts elements at opacity:0 and only flips to opacity:1 once
+    // IntersectionObserver fires — unreliable in headless CI, and Playwright's
+    // toBeVisible treats opacity:0 as hidden. Pre-mark every .reveal node as
+    // .visible (the same class IntersectionObserver would add) so the existing
+    // .reveal.visible CSS makes them visible immediately.
+    await page.addInitScript(() => {
+      const apply = (root: Node) => {
+        if (root.nodeType !== 1) return;
+        const el = root as Element;
+        if (el.classList.contains("reveal")) el.classList.add("visible");
+        el.querySelectorAll(".reveal").forEach((r) => r.classList.add("visible"));
+      };
+      const start = () => {
+        apply(document.documentElement);
+        new MutationObserver((muts) => {
+          for (const m of muts) m.addedNodes.forEach(apply);
+        }).observe(document.documentElement, { childList: true, subtree: true });
+      };
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", start);
+      } else {
+        start();
+      }
     });
+    await page.goto("/");
   });
 
   // ── Page load ────────────────────────────────────────────────────────────

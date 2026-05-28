@@ -6,6 +6,9 @@ import ws from "ws";
 export const TEST_GS1_TRACE_ID = "GS1-PLAYWRIGHT-E2E-0001";
 export const TEST_TX_HASH =
   "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
+// Matches the sentinel used by Vitest tests so any helper that filters by org
+// still includes the Playwright fixture node/batch.
+const TEST_ORG_ID = "00000000-0000-0000-0000-000000000001";
 
 export default async function globalSetup(): Promise<void> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -48,7 +51,8 @@ export default async function globalSetup(): Promise<void> {
         name: "Playwright Test Farm",
         is_individual: false,
         node_type: "farm",
-        kyb_status: "approved"
+        kyb_status: "approved",
+        org_id: TEST_ORG_ID
       })
       .select("id")
       .single();
