@@ -145,6 +145,58 @@ Existing skeleton from T18 — Claude Design implements full visual treatment.
 6. **Document** — If `doc_hash` present: "Tài liệu đính kèm" section with icon + hash (truncated).
 7. **Footer** — "Powered by Vierify" + link to landing page.
 
+### 6.3 B2B Merchant Dashboard (`/login`, `/dashboard`, `/batches/*`)
+
+New zone for authenticated merchants. The Electron desktop wraps the deployed Next.js URL — these routes give desktop users a full merchant tool for free.
+
+**Auth guard:** every `/dashboard` and `/batches/*` route must check for a valid Supabase session on the server side. Unauthenticated users are redirected to `/login`. Merchants whose `kyb_status` is not `approved` see a KYB-pending banner and cannot access batch creation.
+
+Use Next.js middleware (`middleware.ts`) to protect the `/dashboard` and `/batches/*` path prefix — read the session cookie via `@supabase/ssr`.
+
+#### Login (`/login`)
+
+- Full-page centered card. Vierify logo + "Đăng nhập" heading.
+- Email + password fields (same large-touch-target style as mobile).
+- "Đăng nhập" primary button (chain color).
+- On success: redirect to `/dashboard`.
+- Error states: wrong credentials → inline field error; KYB not approved → full-screen "Tài khoản chờ phê duyệt KYB" banner with support email.
+- Link: "Chưa có tài khoản? Liên hệ với chúng tôi" (no self-signup — merchants are onboarded by admin).
+
+#### Dashboard — Batch List (`/dashboard`)
+
+- Authenticated layout: top nav bar (Vierify logo + org name + dark mode toggle + "Đăng xuất" button).
+- Heading: "Lô hàng của tôi".
+- Primary CTA: "Tạo lô hàng mới" button (top right, chain color) → navigates to `/batches/new`.
+- Batch list rendered as a table (desktop) / card stack (mobile):
+  - Columns: Tên lô hàng · GS1 Trace ID (monospace, truncated) · Số lượng · Trạng thái (emerald/amber badge) · Ngày tạo · Hành động (→ detail link)
+  - Data: `trpc.batches.list({ limit: 50 })` — org-scoped (T25 handles this automatically)
+- Empty state: icon + "Chưa có lô hàng nào. Tạo lô hàng đầu tiên." + CTA.
+- Skeleton rows while fetching.
+
+#### Create Batch (`/batches/new`)
+
+- Back link to `/dashboard`.
+- Heading: "Tạo lô hàng mới".
+- Form fields:
+  - Tên lô hàng (text input, required)
+  - GS1 Trace ID (text input, monospace, with inline regex validation `^01[0-9]{14}10[A-Za-z0-9./-]{1,20}$` — show red border + error text on violation)
+  - Node (select dropdown, populated from `trpc.nodes.list({ limit: 50 })` filtered to `kyb_status=approved`)
+  - Số lượng (numeric input)
+  - Đơn vị (select: kg / tấn / lít / thùng / cái)
+  - Lô hàng cha (optional multi-select — search from existing batches via `trpc.batches.list`)
+- "Tạo lô hàng" submit button → calls `trpc.batches.create.mutate` → on success navigates to `/batches/[id]`.
+- Inline error display for FORBIDDEN (KYB gate) and CONFLICT (mass balance violation: show the exact message from the API).
+
+#### Batch Detail (`/batches/[id]`)
+
+- Back link to `/dashboard`.
+- Heading: batch name (large).
+- **Blockchain status badge** — same emerald/amber system. If confirmed: `tx_hash` in monospace (truncated to 16 chars + "…"), copy-to-clipboard icon, "Xem trên Polygonscan Amoy" external link.
+- Stats row: Số lượng + UOM · Node · Scan count · Ngày tạo.
+- **QR code section**: "Mã QR truy xuất" heading + `<img>` tag rendering the `qrDataUrl` from `GET /batches/:id/qr`. Download button below.
+- **Lô hàng cha** (parent genealogy): list of parent batch names + GS1 IDs from `POST /batches/:child_id/parents` response (or from `trpc.genealogy.get`). "Thêm lô hàng cha" button → opens a modal with the same batch search as the create form.
+- **Tài liệu đính kèm**: if `doc_hash` is set, show truncated hash + "Thay thế tài liệu" upload button. If not set, show "Tải lên tài liệu" upload button → multipart `POST /batches/:id/document`.
+
 ---
 
 ## 7. Mobile App — Screen Inventory

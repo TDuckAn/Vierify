@@ -10,7 +10,8 @@ import {
   getBatch,
   listBatches
 } from "../modules/batches/batches.service";
-import { linkGenealogy } from "../modules/genealogy/genealogy.service";
+import { getGenealogy, linkGenealogy } from "../modules/genealogy/genealogy.service";
+import { listNodes } from "../modules/nodes/nodes.service";
 import {
   OTHER_TEST_ORG_ID,
   TEST_ACTOR_ID,
@@ -99,5 +100,55 @@ describe("multi-tenant organization scope", () => {
     ).rejects.toMatchObject({
       code: "CONFLICT"
     });
+  });
+
+  it("scopes node list to the user's organization", async () => {
+    const tenantNode = await insertTestNode(db, { orgId: TEST_ORG_ID });
+    const otherNode = await insertTestNode(db, { orgId: OTHER_TEST_ORG_ID });
+    nodeIds.push(tenantNode.id, otherNode.id);
+
+    const visible = await listNodes({ limit: 50 }, TEST_ORG_ID);
+    expect(visible.some((n) => n.id === tenantNode.id)).toBe(true);
+    expect(visible.some((n) => n.id === otherNode.id)).toBe(false);
+  });
+
+  it("admin (orgId=undefined) sees batches and nodes from all organizations", async () => {
+    const tenantNode = await insertTestNode(db, { orgId: TEST_ORG_ID });
+    const otherNode = await insertTestNode(db, { orgId: OTHER_TEST_ORG_ID });
+    nodeIds.push(tenantNode.id, otherNode.id);
+
+    const tenantBatch = await insertTestBatch(db, tenantNode.id);
+    const otherBatch = await insertTestBatch(db, otherNode.id);
+
+    const allBatches = await listBatches({ limit: 100 }, undefined);
+    expect(allBatches.some((b) => b.id === tenantBatch.id)).toBe(true);
+    expect(allBatches.some((b) => b.id === otherBatch.id)).toBe(true);
+
+    const allNodes = await listNodes({ limit: 100 }, undefined);
+    expect(allNodes.some((n) => n.id === tenantNode.id)).toBe(true);
+    expect(allNodes.some((n) => n.id === otherNode.id)).toBe(true);
+  });
+
+  it("getGenealogy returns empty result for a batch outside the caller's organization", async () => {
+    const tenantNode = await insertTestNode(db, { orgId: TEST_ORG_ID });
+    const otherNode = await insertTestNode(db, { orgId: OTHER_TEST_ORG_ID });
+    nodeIds.push(tenantNode.id, otherNode.id);
+
+    const parentBatch = await insertTestBatch(db, otherNode.id, { quantity: "100" });
+    const childBatch = await insertTestBatch(db, otherNode.id, { quantity: "50" });
+
+    await linkGenealogy(
+      {
+        childBatchId: childBatch.id,
+        parentBatchIds: [parentBatch.id],
+        wasteTolerance: 0.05
+      },
+      TEST_ACTOR_ID,
+      undefined
+    );
+
+    const result = await getGenealogy(childBatch.id, TEST_ORG_ID);
+    expect(result.parents).toHaveLength(0);
+    expect(result.children).toHaveLength(0);
   });
 });

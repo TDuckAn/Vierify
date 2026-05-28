@@ -1,4 +1,5 @@
 import { getTraceTimeline, type ParentBatchEntry, type TraceBatchPayload, type TraceNode } from "./data";
+import { ScanCountValue } from "./scan-count-value";
 
 type TracePageProps = {
   params: Promise<{ id: string }>;
@@ -45,6 +46,19 @@ function NodeTypeLabel(type: string | undefined | null): string {
     retailer: "Cửa hàng"
   };
   return type ? (map[type] ?? type) : "—";
+}
+
+function coerceScanCount(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
 }
 
 function TimelineRow({
@@ -150,6 +164,8 @@ export default async function TracePage({
   const node = getPrimaryNode(batch.supply_chain_node);
   const proof = getBlockchainStatus(batch);
   const txHash = batch.tx_hash;
+  const batchId = typeof batch.id === "string" ? batch.id : null;
+  const scanCount = coerceScanCount(batch.scan_count);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -216,9 +232,15 @@ export default async function TracePage({
             {
               label: "Lượt quét",
               value:
-                batch.scan_count != null && batch.scan_count !== undefined
-                  ? String(batch.scan_count as number)
-                  : "—"
+                batchId ? (
+                  <ScanCountValue
+                    batchId={batchId}
+                    gs1TraceId={id}
+                    initialScanCount={scanCount}
+                  />
+                ) : (
+                  "—"
+                )
             }
           ].map((stat) => (
             <div

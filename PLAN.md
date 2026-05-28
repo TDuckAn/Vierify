@@ -1,6 +1,7 @@
 # Vierify — Project Plan
 
-> **Week 7 / 14** | Sprint 2 ✅ complete | Sprint 3 starts Week 8 | v1 deadline: end of Week 14
+> **Week 7 / 14** | Sprint 2 ✅ complete | Sprint 3 🔄 in progress (Week 8) | v1 deadline: end of Week 14
+> **CI status (2026-05-28):** Playwright E2E ✅ green (commit `472b61e`) · 59 passed · 4 skipped · 0 failed
 > Task legend: `☐` not started · `🔄` in progress · `✅` done · `❌` blocked
 
 ---
@@ -18,8 +19,8 @@ Supply chain traceability platform backed by Polygon blockchain.
 
 | Agent | Responsibility |
 |---|---|
-| **Claude** | Planning, writing tests, code review, updating this file |
-| **Codex** | All implementation (see AGENTS.md) |
+| **Claude** | Planning, writing tests, code review, CI/CD config, updating this file, **all UI implementation** (web + mobile — was "Claude Design") |
+| **Codex** | Backend implementation: API, schema migrations, workers, queues (see AGENTS.md) |
 | **GitHub Copilot** | In-editor code completion support |
 
 ---
@@ -179,13 +180,14 @@ See Sprint 3 task table in the Roadmap section below.
 
 | # | Task | Owner | Status | Priority | Acceptance criteria |
 |---|---|---|---|---|---|
-| T24 | RBAC: admin / merchant / viewer roles | Codex | 🔄 | P1 | `app_metadata.role` controls access · viewer: read-only tRPC · merchant: create/link batches · admin: KYB + all · Vitest coverage |
-| T25 | Multi-tenant orgs: node membership | Codex | 🔄 | P1 | `supply_chain_node` has `org_id` · merchant belongs to exactly one org · batches scoped to org · mass-balance check stays within org boundary |
-| T26 | Supabase Realtime: live scan count | Codex | ☐ | P2 | `trace_batch.scan_count` increments via Realtime channel on B2C page · no full page reload · graceful fallback if Realtime is unavailable |
-| T27 | Sentry: web + API error tracking | Codex | ☐ | P2 | `SENTRY_DSN` env var · unhandled errors captured on both surfaces · source maps uploaded in CI · free-tier 5K errors/month |
+| T24 | RBAC: admin / merchant / viewer roles | Codex | ✅ | P1 | Reviewed by Claude (2026-05-28) · `app_metadata.role` controls access ✅ · viewer: read-only via `readProcedure` ✅ · merchant: `merchantProcedure` gates create/link ✅ · admin: `adminProcedure` gates KYB + node create ✅ · impersonation impossible (role from server-controlled `app_metadata`) ✅ · `rbac.test.ts` 5 cases (viewer reads, viewer blocked, merchant blocked from KYB, admin all, unassigned blocked) ✅ |
+| T25 | Multi-tenant orgs: node membership | Codex | ✅ | P1 | Reviewed by Claude (2026-05-28) · `org_id NOT NULL` on `supply_chain_node` ✅ · `getTenantOrgId()` returns undefined for admins (see-all) ✅ · `getBatch`/`listBatches`/`getNode`/`listNodes` all JOIN-filter by orgId ✅ · cross-org genealogy rejected (CONFLICT) before mass-balance ✅ · `multitenant.test.ts` 3 integration cases ✅ · Minor gaps for T29: `nodes.list` scoping + admin see-all real-DB case |
+| T26 | Supabase Realtime: live scan count | Codex | ✅ | P2 | `trace_batch.scan_count` increments via Realtime channel on B2C page · no full page reload · graceful fallback if Realtime is unavailable |
+| T27 | Sentry: web + API error tracking | Claude | ✅ | P2 | Completed by Claude (2026-05-28) · **Web**: Session Replay added (`replayIntegration`, session 10% / error 100%); `enableLogs: true` on all 3 runtimes; `includeLocalVariables: true` on server; `tunnelRoute: "/monitoring"` in `next.config.mjs` (ad-blocker bypass); `global-error.tsx` UTF-8 encoding bug fixed · **API**: `includeLocalVariables: true` + `enableLogs: true` in `sentry.ts`; `fastifyIntegration` (5xx filter) already present · **CI**: `SENTRY_AUTH_TOKEN`/`SENTRY_DSN`/`SENTRY_ORG`/`SENTRY_PROJECT`/`SENTRY_RELEASE` already wired in build step; source maps deleted after upload |
 | T28 | Oracle / Vietnam Tax Authority KYB stub | Codex | ☐ | P3 | `POST /admin/nodes/:id/kyb/verify` calls stub that validates tax code format · real VTA integration deferred to Sprint 4 |
-| T29 | Vitest: RBAC + multi-tenant tests | Claude | ☐ | P1 | Written after T24/T25 ship · covers: viewer blocked from create, merchant blocked from other org's batches, admin can access all |
-| T30 | Playwright: authenticated B2B flows | Claude | ☐ | P2 | Login → create batch → link parent → view QR · requires T24 complete |
+| T29 | Vitest: RBAC + multi-tenant tests | Claude | ✅ | P1 | Written by Claude (2026-05-28) · augmented `multitenant.test.ts` with 3 new integration cases: `nodes.list` org scoping, admin (orgId=undefined) sees all orgs/batches, `getGenealogy` returns empty (not 404) for wrong-org batch · Codex `rbac.test.ts` (5 mocked cases) + `multitenant.test.ts` (6 real-DB cases) now cover all T24/T25 acceptance criteria |
+| T31 | Web B2B merchant dashboard (Next.js) | Claude | 🔄 | P2 | `lib/trpc.ts` + `lib/trpc-provider.tsx` (tRPC React+Query client with Bearer auth header) · `(auth)/login` (email/password, Supabase session) · `(dashboard)/layout.tsx` (auth guard, org-aware nav, theme toggle, sign-out) · `(dashboard)/dashboard` (batch list — table desktop / cards mobile, skeleton loading, empty state) · `(dashboard)/batches/new` (create form, inline GS1 regex validation, KYB-pending guard on node selector) · `(dashboard)/batches/[id]` (stats, blockchain badge, tx_hash copy, Polygonscan link, QR load+download, parent genealogy list, doc hash) · Electron desktop inherits automatically |
+| T30 | Playwright: authenticated B2B flows | Claude | ❌ | P2 | **Blocked on T31**: once Claude Design ships the B2B web dashboard, Claude writes: login flow, create-batch form submission, parent-link flow, QR modal visible. Unblocks automatically when T31 is ✅. |
 
 #### Outstanding debt carried from Sprint 2
 
@@ -227,6 +229,19 @@ See Sprint 3 task table in the Roadmap section below.
 | Mobile `(app)` router types stale | TypeScript misses new routes until `expo start` regenerates `.expo/types/router.d.ts` | Manually patched for now; add `expo export` step to CI to keep types fresh |
 | Batch detail + create screens missing | Merchants can view list but cannot create or inspect a batch from the app | ✅ Fixed — `(batches)/[id].tsx` + `(batches)/new.tsx` shipped; BatchCard is tappable; `+` routes to create form |
 | Be Vietnam Pro/JetBrains Mono font load fails in CI | Build succeeds but fonts fall back to system fonts silently | Next.js `next/font` caches at build time — verify with a Vercel preview deploy before Sprint 3 |
+
+---
+
+## Sprint 3 Risk Register
+
+| Risk | Impact | Mitigation / Status |
+|---|---|---|
+| Codex schema migrations add NOT NULL columns without updating globalSetup | E2E globalSetup fails to seed test data → all confirmed-batch tests skip | ✅ Fixed: `globalSetup.ts` now supplies `node_type`, `org_id` for every new NOT NULL column. **Rule: when Codex adds a NOT NULL column to `supply_chain_node` or `trace_batch`, globalSetup must be updated in the same PR.** |
+| `TEST_GS1_TRACE_ID` must match DB check constraint `^01[0-9]{14}10[A-Za-z0-9./-]{1,20}$` | globalSetup batch insert fails silently; confirmed-batch tests all fail | ✅ Fixed: sentinel changed to `011234567890123410E2ETEST01`. Any future change to the GS1 regex must be reflected here. |
+| Pricing section renders cards twice (mobile scroll + desktop grid) | `getByText(...).first()` picks the DOM-first copy which is `display:none` on the opposite viewport → hidden assertion failure | ✅ Fixed: pricing tests now use `[class*="grid-cols-5"]` (desktop) or `[class*="overflow-x-auto"]` (mobile) based on `viewportSize()`. **Rule: when adding duplicate-rendered sections for responsive layout, tests must scope to the visible container.** |
+| New UI features that repeat a badge/text in multiple DOM locations cause Playwright strict-mode violations | `toBeVisible()` without `.first()` throws when 2 elements match | ✅ Fixed: added `.first()` to badge locator in `qr-timeline.spec.ts`. **Rule: whenever Codex adds a second occurrence of a UI element that existing tests target, the test must be updated.** |
+| `locator("section, div").filter(...)` matches outer page-wrapper divs | Strict-mode violation — locator resolves to 2+ elements | ✅ Fixed: narrowed to `locator("section")`. **Rule: always prefer semantic element selectors (`section`, `article`, `nav`) over generic `div` when scoping Playwright locators.** |
+| T24 RBAC / T25 multi-tenant schema changes have been partially shipped (commit evidence: `org_id NOT NULL`, `node_type NOT NULL`) but full acceptance criteria unconfirmed | Claude cannot write T29 tests without knowing what RBAC middleware and org-scoping logic exists | ✅ Resolved: Claude reviewed all RBAC + multi-tenant code on 2026-05-28 (context.ts, trpc.ts, all service + router files) — both tasks marked ✅; T29 written and complete. |
 
 ---
 

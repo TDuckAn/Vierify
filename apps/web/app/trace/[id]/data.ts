@@ -15,6 +15,7 @@ export type TraceBatchPayload = {
   id?: string | null;
   name?: string | null;
   quantity?: number | string | null;
+  scan_count?: number | null;
   supply_chain_node?: TraceNode | TraceNode[] | null;
   tx_hash?: string | null;
   uom?: string | null;

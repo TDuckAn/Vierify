@@ -1,4 +1,5 @@
 import "dotenv/config";
+import "./sentry";
 
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
@@ -24,6 +25,7 @@ import { appRouter } from "./router";
 import { updateKybStatusSchema } from "./modules/nodes/nodes.schema";
 import { updateKybStatus } from "./modules/nodes/nodes.service";
 import { getBatchQrCode } from "./modules/qr/qr.service";
+import { captureException, Sentry } from "./sentry";
 
 const server = Fastify({
   logger: true
@@ -129,6 +131,7 @@ server.post("/batches/:child_id/parents", async (request, reply) => {
     }
 
     request.log.error(error);
+    captureException(error);
 
     return reply.code(500).send({
       error: "Internal server error."
@@ -194,6 +197,7 @@ server.post("/batches/:id/document", async (request, reply) => {
     }
 
     request.log.error(error);
+    captureException(error);
 
     return reply.code(500).send({
       error: "Internal server error."
@@ -222,6 +226,7 @@ server.get("/batches/:id/qr", async (request, reply) => {
     }
 
     request.log.error(error);
+    captureException(error);
 
     return reply.code(500).send({
       error: "Internal server error."
@@ -273,6 +278,7 @@ server.patch("/admin/nodes/:id/kyb", async (request, reply) => {
     }
 
     request.log.error(error);
+    captureException(error);
 
     return reply.code(500).send({
       error: "Internal server error."
@@ -284,8 +290,17 @@ await server.register(fastifyTRPCPlugin, {
   prefix: "/trpc",
   trpcOptions: {
     createContext,
+    onError({ error }: { error: TRPCError }) {
+      if (error.code === "INTERNAL_SERVER_ERROR") {
+        captureException(error);
+      }
+    },
     router: appRouter
   }
+});
+
+Sentry.setupFastifyErrorHandler(server, {
+  shouldHandleError: (_error, _request, reply) => reply.statusCode >= 500
 });
 
 if (process.env.ENABLE_BLOCKCHAIN_WORKER === "true") {

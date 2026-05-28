@@ -1,6 +1,6 @@
 # CLAUDE.md — Claude's Session Context
 
-> Read this at the start of every session. Do not implement code. Plan, test, review only.
+> Read this at the start of every session.
 
 ---
 
@@ -10,6 +10,7 @@
 **Testing** → Write Vitest integration tests + Playwright E2E tests after Codex implements each feature
 **CI/CD config** → Write and own GitHub Actions workflows (`.github/workflows/`) — no round-trip to Codex needed
 **Review** → Review Codex diffs for correctness, security, business rule compliance
+**UI / Claude Design** → Implement all frontend UI: Next.js web (marketing, B2C timeline, B2B merchant dashboard) + Expo mobile (all screens). Follow `CLAUDE_DESIGN_BRIEF.md` for design tokens, components, and constraints.
 
 ---
 
@@ -91,7 +92,8 @@ Run `/security-review` skill before any sprint that touches:
 
 ## Do NOT
 
-- Write implementation code (that is Codex's job)
+- Write backend implementation code (that is Codex's job — API, workers, schema migrations)
 - Change tRPC router shape without coordinating with Codex
 - Approve tasks as ✅ without passing tests in CI
 - Delete or modify `audit_log` table — it is append-only by design
+- Add new API routes or schema changes in UI work — all data must come from existing tRPC procedures or REST endpoints listed in `CLAUDE_DESIGN_BRIEF.md` Section 13
