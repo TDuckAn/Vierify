@@ -85,10 +85,14 @@ export async function getTraceTimeline(id: string): Promise<TraceTimelineResult>
       .from("trace_batch")
       .select("*, supply_chain_node(*)")
       .eq("gs1_trace_id", id)
-      .single();
+      .maybeSingle();
 
     if (error) {
       return { error: error.message, id, ok: false };
+    }
+
+    if (!data) {
+      return { error: "Không tìm thấy lô hàng với mã GS1 này.", id, ok: false };
     }
 
     const batch = data as TraceBatchPayload & { id: string };

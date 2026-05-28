@@ -1,43 +1,30 @@
+import { createClient } from "@supabase/supabase-js";
 import Constants from "expo-constants";
 import { router } from "expo-router";
-import { Pressable, SafeAreaView, ScrollView, Text, View } from "react-native";
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 
 type KybStatus = "pending" | "approved" | "rejected" | "suspended";
 
-function KybBadge({ status }: { status: KybStatus }) {
-  const config = {
-    approved: {
-      className: "border-emerald-200 bg-emerald-50",
-      textClass: "text-emerald-700",
-      label: "✓ Đã xác minh KYB"
-    },
-    pending: {
-      className: "border-amber-200 bg-amber-50",
-      textClass: "text-amber-700",
-      label: "⏳ Chờ xét duyệt KYB"
-    },
-    rejected: {
-      className: "border-rose-200 bg-rose-50",
-      textClass: "text-rose-700",
-      label: "✕ KYB bị từ chối"
-    },
-    suspended: {
-      className: "border-slate-200 bg-slate-100",
-      textClass: "text-slate-600",
-      label: "⏸ Tài khoản tạm dừng"
-    }
-  };
+const KYB_CONFIG: Record<KybStatus, { bg: string; border: string; text: string; label: string }> = {
+  approved:  { bg: "#ECFDF5", border: "#A7F3D0", text: "#065F46", label: "✓ Đã xác minh KYB" },
+  pending:   { bg: "#FFFBEB", border: "#FDE68A", text: "#92400E", label: "⏳ Chờ xét duyệt KYB" },
+  rejected:  { bg: "#FFF1F2", border: "#FECDD3", text: "#BE123C", label: "✕ KYB bị từ chối" },
+  suspended: { bg: "#F8FAFC", border: "#E2E8F0", text: "#64748B", label: "⏸ Tài khoản tạm dừng" }
+};
 
-  const c = config[status];
+function KybBadge({ status }: { status: KybStatus }) {
+  const c = KYB_CONFIG[status];
   return (
-    <View className={`rounded-full border px-4 py-1.5 ${c.className}`}>
-      <Text className={`text-sm font-bold ${c.textClass}`}>{c.label}</Text>
+    <View style={[s.badge, { backgroundColor: c.bg, borderColor: c.border }]}>
+      <Text style={[s.badgeText, { color: c.text }]}>{c.label}</Text>
     </View>
   );
 }
 
 export default function ProfileScreen() {
-  // Placeholder profile data — wire up to Supabase Auth in production
+  const appVersion = Constants.expoConfig?.version ?? "0.0.0";
+
+  // Hardcoded demo — real data wired when Supabase session is read
   const profile = {
     nodeName: "Công ty TNHH Vierify Demo",
     email: "demo@vierify.app",
@@ -45,95 +32,160 @@ export default function ProfileScreen() {
     plan: "Professional"
   };
 
-  const appVersion =
-    Constants.expoConfig?.version ?? Constants.manifest?.version ?? "—";
-
-  function handleLogout() {
-    // In production: call supabase.auth.signOut() then redirect
-    router.replace("/(auth)/login");
+  async function handleLogout() {
+    try {
+      const url = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
+      const key = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "";
+      if (url && key) {
+        await createClient(url, key).auth.signOut();
+      }
+    } finally {
+      router.replace("/(auth)/login");
+    }
   }
 
+  const settings = [
+    { label: "Đổi mật khẩu", icon: "🔑" },
+    { label: "Thông báo", icon: "🔔" },
+    { label: "Liên hệ hỗ trợ", icon: "💬" }
+  ];
+
   return (
-    <SafeAreaView className="flex-1 bg-slate-50">
-      <ScrollView contentContainerClassName="p-5 gap-4">
-        {/* Header */}
-        <View>
-          <Text className="text-xs font-bold uppercase tracking-widest text-slate-400">
-            MerchantApp
-          </Text>
-          <Text className="mt-0.5 text-2xl font-extrabold text-slate-950">
-            Hồ sơ
-          </Text>
-        </View>
+    <SafeAreaView style={s.safe}>
+      <ScrollView contentContainerStyle={s.scroll}>
+        {/* Heading */}
+        <Text style={s.heading}>Hồ sơ</Text>
 
         {/* Identity card */}
-        <View className="rounded-2xl border border-slate-200 bg-white p-5 gap-4">
-          <View className="h-16 w-16 items-center justify-center rounded-2xl bg-chain">
-            <Text className="text-3xl font-black text-white">
-              {profile.nodeName.charAt(0)}
-            </Text>
+        <View style={s.card}>
+          <View style={s.avatar}>
+            <Text style={s.avatarLetter}>{profile.nodeName.charAt(0)}</Text>
           </View>
-
-          <View>
-            <Text className="text-xl font-bold text-slate-950" numberOfLines={2}>
-              {profile.nodeName}
-            </Text>
-            <Text className="mt-1 text-sm text-slate-500">{profile.email}</Text>
-          </View>
-
+          <Text style={s.name}>{profile.nodeName}</Text>
+          <Text style={s.email}>{profile.email}</Text>
           <KybBadge status={profile.kybStatus} />
         </View>
 
         {/* Plan */}
-        <View className="rounded-2xl border border-slate-200 bg-white p-5">
-          <Text className="text-xs font-bold uppercase tracking-widest text-slate-400">
-            Gói dịch vụ
-          </Text>
-          <View className="mt-3 flex-row items-center justify-between">
-            <Text className="text-lg font-bold text-slate-950">{profile.plan}</Text>
-            <View className="rounded-full border border-chain/30 bg-chain/10 px-3 py-1">
-              <Text className="text-xs font-bold text-chain">Đang hoạt động</Text>
+        <View style={s.card}>
+          <Text style={s.sectionLabel}>Gói dịch vụ</Text>
+          <View style={s.planRow}>
+            <Text style={s.planName}>{profile.plan}</Text>
+            <View style={s.activePill}>
+              <Text style={s.activePillText}>Đang hoạt động</Text>
             </View>
           </View>
         </View>
 
-        {/* Settings */}
-        <View className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-          {[
-            { label: "Đổi mật khẩu", icon: "🔑" },
-            { label: "Thông báo", icon: "🔔" },
-            { label: "Liên hệ hỗ trợ", icon: "💬" }
-          ].map((item, i, arr) => (
+        {/* Settings list */}
+        <View style={s.settingsList}>
+          {settings.map((item, i) => (
             <Pressable
               key={item.label}
-              className={`flex-row items-center gap-4 px-5 py-4 active:bg-slate-50 ${
-                i < arr.length - 1 ? "border-b border-slate-100" : ""
-              }`}
-              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+              style={({ pressed }) => [
+                s.settingRow,
+                i < settings.length - 1 && s.settingRowBorder,
+                pressed && s.settingRowPressed
+              ]}
             >
-              <Text className="text-xl">{item.icon}</Text>
-              <Text className="flex-1 text-base font-medium text-slate-700">
-                {item.label}
-              </Text>
-              <Text className="text-slate-300">›</Text>
+              <Text style={s.settingIcon}>{item.icon}</Text>
+              <Text style={s.settingLabel}>{item.label}</Text>
+              <Text style={s.chevron}>›</Text>
             </Pressable>
           ))}
         </View>
 
         {/* Logout */}
         <Pressable
-          onPress={handleLogout}
-          className="rounded-2xl border border-rose-200 bg-rose-50 p-4 items-center active:opacity-80"
-          style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+          onPress={() => void handleLogout()}
+          style={({ pressed }) => [s.logoutBtn, pressed && s.logoutBtnPressed]}
         >
-          <Text className="font-bold text-rose-700">Đăng xuất</Text>
+          <Text style={s.logoutText}>Đăng xuất</Text>
         </Pressable>
 
-        {/* Version */}
-        <Text className="text-center text-xs text-slate-400">
-          Vierify MerchantApp v{appVersion}
-        </Text>
+        <Text style={s.version}>Vierify MerchantApp v{appVersion}</Text>
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: "#F8FAFC" },
+  scroll: { padding: 20, gap: 12 },
+  heading: { fontSize: 28, fontWeight: "800", color: "#0F172A", letterSpacing: -0.4, marginBottom: 4 },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 18,
+    gap: 10
+  },
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#14B8A6",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  avatarLetter: { fontSize: 22, fontWeight: "800", color: "#fff" },
+  name: { fontSize: 16, fontWeight: "700", color: "#0F172A" },
+  email: { fontSize: 13, color: "#64748B" },
+  badge: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 5
+  },
+  badgeText: { fontSize: 12, fontWeight: "700" },
+  sectionLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    color: "#94A3B8"
+  },
+  planRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  planName: { fontSize: 17, fontWeight: "700", color: "#0F172A" },
+  activePill: {
+    backgroundColor: "#F0FDFA",
+    borderWidth: 1,
+    borderColor: "#CCFBF1",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4
+  },
+  activePillText: { fontSize: 11, fontWeight: "700", color: "#0F766E" },
+  settingsList: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    overflow: "hidden"
+  },
+  settingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    gap: 14
+  },
+  settingRowBorder: { borderBottomWidth: 1, borderBottomColor: "#F1F5F9" },
+  settingRowPressed: { backgroundColor: "#F8FAFC" },
+  settingIcon: { fontSize: 18 },
+  settingLabel: { flex: 1, fontSize: 15, fontWeight: "500", color: "#334155" },
+  chevron: { fontSize: 20, color: "#CBD5E1" },
+  logoutBtn: {
+    backgroundColor: "rgba(239,68,68,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(239,68,68,0.2)",
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center"
+  },
+  logoutBtnPressed: { backgroundColor: "rgba(239,68,68,0.14)" },
+  logoutText: { fontSize: 15, fontWeight: "700", color: "#DC2626" },
+  version: { textAlign: "center", fontSize: 11, color: "#94A3B8", marginTop: 4 }
+});

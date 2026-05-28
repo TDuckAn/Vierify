@@ -6,16 +6,17 @@ import {
   Pressable,
   RefreshControl,
   SafeAreaView,
+  StyleSheet,
   Text,
   View
 } from "react-native";
 
-import { trpc } from "../../../lib/trpc";
 import {
   flushBatchCreateQueue,
   listQueuedBatchCreates,
   type QueuedBatchCreate
 } from "../../../lib/offline-queue";
+import { trpc } from "../../../lib/trpc";
 
 type HistoryBatch = {
   bcStatus: number;
@@ -30,85 +31,17 @@ type HistoryBatch = {
   uom: string;
 };
 
-function isConfirmed(batch: HistoryBatch): boolean {
-  return batch.bcStatus === 1 && Boolean(batch.txHash);
+function isConfirmed(b: HistoryBatch) {
+  return b.bcStatus === 1 && Boolean(b.txHash);
 }
 
-function formatDate(value: Date | string | undefined): string {
-  if (!value) return "";
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString("vi-VN");
+function formatDate(v: Date | string | undefined) {
+  if (!v) return "";
+  const d = v instanceof Date ? v : new Date(v);
+  return isNaN(d.getTime()) ? "" : d.toLocaleDateString("vi-VN");
 }
 
-function BatchCard({ batch, onPress }: { batch: HistoryBatch; onPress: () => void }) {
-  const confirmed = isConfirmed(batch);
-  return (
-    <Pressable
-      onPress={onPress}
-      className="rounded-2xl border border-slate-200 bg-white p-4 active:opacity-80"
-      style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
-    >
-      <View className="flex-row items-start justify-between gap-3">
-        <View className="min-w-0 flex-1">
-          <Text
-            className="text-base font-bold text-slate-950"
-            numberOfLines={1}
-          >
-            {batch.name}
-          </Text>
-          <Text className="mt-0.5 font-mono text-xs text-slate-400" numberOfLines={1}>
-            {batch.gs1TraceId}
-          </Text>
-        </View>
-        <View
-          className={`shrink-0 rounded-full border px-3 py-1 ${
-            batch.isOfflineQueued
-              ? "border-blue-200 bg-blue-50"
-              : confirmed
-                ? "border-emerald-200 bg-emerald-50"
-                : "border-amber-200 bg-amber-50"
-          }`}
-        >
-          <Text
-            className={`text-xs font-bold ${
-              batch.isOfflineQueued
-                ? "text-blue-700"
-                : confirmed
-                  ? "text-emerald-700"
-                  : "text-amber-700"
-            }`}
-          >
-            {batch.isOfflineQueued ? "Chờ đồng bộ" : confirmed ? "Đã xác minh" : "Đang xử lý"}
-          </Text>
-        </View>
-      </View>
-
-      <View className="mt-3 flex-row items-center justify-between">
-        <Text className="text-sm text-slate-600">
-          {batch.quantity} {batch.uom}
-        </Text>
-        <Text className="text-xs text-slate-400">{formatDate(batch.createdAt)}</Text>
-      </View>
-
-      {batch.isOfflineQueued ? (
-        <Text className="mt-2 text-xs text-blue-600">
-          Đã lưu trên thiết bị. Ứng dụng sẽ tự đồng bộ khi có mạng.
-        </Text>
-      ) : batch.txHash ? (
-        <Text className="mt-2 font-mono text-xs text-slate-400" numberOfLines={1}>
-          {batch.txHash.slice(0, 20)}…
-        </Text>
-      ) : (
-        <Text className="mt-2 text-xs text-amber-600">
-          Đang chờ xác nhận Polygon…
-        </Text>
-      )}
-    </Pressable>
-  );
-}
-
-function mapQueuedBatch(row: QueuedBatchCreate): HistoryBatch {
+function mapQueued(row: QueuedBatchCreate): HistoryBatch {
   return {
     bcStatus: 0,
     createdAt: row.createdAt,
@@ -123,22 +56,55 @@ function mapQueuedBatch(row: QueuedBatchCreate): HistoryBatch {
   };
 }
 
+function BatchCard({ batch, onPress }: { batch: HistoryBatch; onPress: () => void }) {
+  const confirmed = isConfirmed(batch);
+  const badgeBg   = batch.isOfflineQueued ? "#EFF6FF" : confirmed ? "#ECFDF5" : "#FFFBEB";
+  const badgeBdr  = batch.isOfflineQueued ? "#BFDBFE" : confirmed ? "#A7F3D0" : "#FDE68A";
+  const badgeText = batch.isOfflineQueued ? "#1D4ED8" : confirmed ? "#065F46" : "#92400E";
+  const badgeLabel= batch.isOfflineQueued ? "Chờ đồng bộ" : confirmed ? "Đã xác minh" : "Đang xử lý";
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [s.card, pressed && s.cardPressed]}
+    >
+      <View style={s.cardTop}>
+        <View style={s.cardInfo}>
+          <Text style={s.cardName} numberOfLines={1}>{batch.name}</Text>
+          <Text style={s.cardGs1} numberOfLines={1}>{batch.gs1TraceId}</Text>
+        </View>
+        <View style={[s.badge, { backgroundColor: badgeBg, borderColor: badgeBdr }]}>
+          <Text style={[s.badgeText, { color: badgeText }]}>{badgeLabel}</Text>
+        </View>
+      </View>
+
+      <View style={s.cardBottom}>
+        <Text style={s.cardQty}>{batch.quantity} {batch.uom}</Text>
+        <Text style={s.cardDate}>{formatDate(batch.createdAt)}</Text>
+      </View>
+
+      {batch.isOfflineQueued ? (
+        <Text style={s.cardNote}>Đã lưu trên thiết bị. Ứng dụng sẽ tự đồng bộ khi có mạng.</Text>
+      ) : batch.txHash ? (
+        <Text style={s.cardHash} numberOfLines={1}>{batch.txHash.slice(0, 22)}…</Text>
+      ) : (
+        <Text style={s.cardPending}>Đang chờ xác nhận Polygon…</Text>
+      )}
+    </Pressable>
+  );
+}
+
 function EmptyState() {
   return (
-    <View className="flex-1 items-center justify-center gap-4 px-8 py-20">
-      <Text className="text-5xl">📦</Text>
-      <Text className="text-center text-lg font-bold text-slate-950">
-        Chưa có lô hàng nào
-      </Text>
-      <Text className="text-center text-sm text-slate-500">
-        Tạo lô hàng đầu tiên của bạn để bắt đầu truy xuất nguồn gốc.
-      </Text>
+    <View style={s.empty}>
+      <Text style={s.emptyIcon}>📦</Text>
+      <Text style={s.emptyTitle}>Chưa có lô hàng nào</Text>
+      <Text style={s.emptySub}>Tạo lô hàng đầu tiên của bạn để bắt đầu truy xuất nguồn gốc.</Text>
       <Pressable
-        className="mt-2 rounded-full bg-chain px-6 py-3 active:opacity-80"
-        onPress={() => router.push("/(app)/(scan)")}
-        style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+        style={({ pressed }) => [s.emptyBtn, pressed && s.emptyBtnPressed]}
+        onPress={() => router.push("/(app)/(batches)/new")}
       >
-        <Text className="font-bold text-white">Quét mã ngay</Text>
+        <Text style={s.emptyBtnText}>Tạo lô hàng đầu tiên</Text>
       </Pressable>
     </View>
   );
@@ -147,119 +113,104 @@ function EmptyState() {
 export default function BatchesScreen() {
   const [batches, setBatches] = useState<HistoryBatch[]>([]);
   const [error, setError] = useState<string | undefined>();
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  async function loadBatches(isRefresh = false) {
+  async function load(isRefresh = false) {
     if (isRefresh) setRefreshing(true);
-    else setIsLoading(true);
+    else setLoading(true);
     setError(undefined);
 
     try {
-      if (isRefresh) {
-        await flushBatchCreateQueue();
-      }
-
-      const result = await trpc.batches.list.query({ limit: 50 });
-      const queued = await listQueuedBatchCreates();
-      setBatches(
-        [
-          ...queued.map(mapQueuedBatch),
-          ...result.map((b) => ({
-            bcStatus: b.bcStatus,
-            createdAt: b.createdAt,
-            gs1TraceId: b.gs1TraceId,
-            id: b.id,
-            name: b.name,
-            quantity: b.quantity,
-            txHash: b.txHash,
-            uom: b.uom
-          }))
-        ]
-      );
+      if (isRefresh) await flushBatchCreateQueue();
+      const [result, queued] = await Promise.all([
+        trpc.batches.list.query({ limit: 50 }),
+        listQueuedBatchCreates()
+      ]);
+      setBatches([
+        ...queued.map(mapQueued),
+        ...result.map((b) => ({
+          bcStatus: b.bcStatus,
+          createdAt: b.createdAt,
+          gs1TraceId: b.gs1TraceId,
+          id: b.id,
+          name: b.name,
+          quantity: b.quantity,
+          txHash: b.txHash,
+          uom: b.uom
+        }))
+      ]);
     } catch (e) {
       const queued = await listQueuedBatchCreates();
-
       if (queued.length > 0) {
-        setBatches(queued.map(mapQueuedBatch));
+        setBatches(queued.map(mapQueued));
       } else {
         setError(e instanceof Error ? e.message : "Không thể tải danh sách lô hàng.");
       }
     } finally {
-      setIsLoading(false);
+      setLoading(false);
       setRefreshing(false);
     }
   }
 
-  useEffect(() => {
-    void loadBatches();
-  }, []);
+  useEffect(() => { void load(); }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50">
+    <SafeAreaView style={s.safe}>
       {/* Header */}
-      <View className="flex-row items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
-        <View>
-          <Text className="text-xs font-bold uppercase tracking-widest text-slate-400">
-            MerchantApp
-          </Text>
-          <Text className="mt-0.5 text-2xl font-extrabold text-slate-950">
-            Lô hàng của tôi
-          </Text>
-        </View>
+      <View style={s.header}>
+        <Text style={s.heading}>Lô hàng của tôi</Text>
         <Pressable
+          style={({ pressed }) => [s.addBtn, pressed && s.addBtnPressed]}
           onPress={() => router.push("/(app)/(batches)/new")}
-          className="h-10 w-10 items-center justify-center rounded-full bg-chain active:opacity-80"
-          style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
           accessibilityLabel="Tạo lô hàng mới"
         >
-          <Text className="text-lg text-white">+</Text>
+          <Text style={s.addBtnText}>+</Text>
         </Pressable>
       </View>
 
-      {/* Loading */}
-      {isLoading && (
-        <View className="flex-1 items-center justify-center gap-3">
-          <ActivityIndicator color="#14B8A6" />
-          <Text className="text-sm text-slate-400">Đang tải lô hàng…</Text>
+      {/* Loading skeletons */}
+      {loading && (
+        <View style={s.center}>
+          {[0,1,2].map(i => (
+            <View key={i} style={s.skeleton} />
+          ))}
         </View>
       )}
 
       {/* Error */}
-      {!isLoading && error && (
-        <View className="m-5 rounded-2xl border border-rose-200 bg-rose-50 p-5">
-          <Text className="font-bold text-rose-900">Không thể tải dữ liệu</Text>
-          <Text className="mt-1 text-sm text-rose-700">{error}</Text>
+      {!loading && error && (
+        <View style={s.errWrap}>
+          <Text style={s.errTitle}>Không thể tải dữ liệu</Text>
+          <Text style={s.errMsg}>{error}</Text>
           <Pressable
-            onPress={() => loadBatches()}
-            className="mt-3 self-start rounded-full border border-rose-300 px-4 py-2"
+            style={({ pressed }) => [s.retryBtn, pressed && { opacity: 0.7 }]}
+            onPress={() => void load()}
           >
-            <Text className="text-sm font-semibold text-rose-700">Thử lại</Text>
+            <Text style={s.retryText}>Thử lại</Text>
           </Pressable>
         </View>
       )}
 
       {/* List */}
-      {!isLoading && !error && (
+      {!loading && !error && (
         <FlatList
           data={batches}
           keyExtractor={(b) => b.id}
-          contentContainerClassName="gap-3 p-5"
+          contentContainerStyle={s.listContent}
           ListEmptyComponent={EmptyState}
           renderItem={({ item }) => (
             <BatchCard
               batch={item}
               onPress={() => {
-                if (!item.isOfflineQueued) {
-                  router.push(`/(app)/(batches)/${item.id}`);
-                }
+                if (!item.isOfflineQueued) router.push(`/(app)/(batches)/${item.id}`);
               }}
             />
           )}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={() => loadBatches(true)}
+              onRefresh={() => void load(true)}
               tintColor="#14B8A6"
             />
           }
@@ -268,3 +219,98 @@ export default function BatchesScreen() {
     </SafeAreaView>
   );
 }
+
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: "#F8FAFC" },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0"
+  },
+  heading: { fontSize: 26, fontWeight: "800", color: "#0F172A", letterSpacing: -0.4 },
+  addBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#14B8A6",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  addBtnPressed: { backgroundColor: "#0F766E" },
+  addBtnText: { color: "#fff", fontSize: 22, fontWeight: "600", lineHeight: 26 },
+  center: { padding: 16, gap: 10 },
+  skeleton: {
+    height: 88,
+    borderRadius: 12,
+    backgroundColor: "#E2E8F0",
+    opacity: 0.6
+  },
+  errWrap: {
+    margin: 16,
+    padding: 18,
+    backgroundColor: "#FFF1F2",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#FECDD3"
+  },
+  errTitle: { fontWeight: "700", fontSize: 15, color: "#BE123C" },
+  errMsg: { fontSize: 13, color: "#BE123C", marginTop: 4 },
+  retryBtn: {
+    alignSelf: "flex-start",
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 7
+  },
+  retryText: { fontSize: 13, fontWeight: "600", color: "#BE123C" },
+  listContent: { padding: 14, gap: 10 },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2
+  },
+  cardPressed: { backgroundColor: "#F8FAFC" },
+  cardTop: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  cardInfo: { flex: 1, minWidth: 0 },
+  cardName: { fontSize: 15, fontWeight: "700", color: "#0F172A" },
+  cardGs1: { fontSize: 11, color: "#94A3B8", fontFamily: "monospace", marginTop: 2 },
+  badge: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4, flexShrink: 0 },
+  badgeText: { fontSize: 11, fontWeight: "700" },
+  cardBottom: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10
+  },
+  cardQty: { fontSize: 13, color: "#475569" },
+  cardDate: { fontSize: 12, color: "#94A3B8" },
+  cardNote: { fontSize: 11, color: "#2563EB", marginTop: 6 },
+  cardHash: { fontSize: 11, color: "#94A3B8", fontFamily: "monospace", marginTop: 6 },
+  cardPending: { fontSize: 11, color: "#D97706", marginTop: 6 },
+  empty: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 12, marginTop: 40 },
+  emptyIcon: { fontSize: 48 },
+  emptyTitle: { fontSize: 18, fontWeight: "700", color: "#0F172A", textAlign: "center" },
+  emptySub: { fontSize: 14, color: "#64748B", textAlign: "center", lineHeight: 21 },
+  emptyBtn: {
+    marginTop: 8,
+    backgroundColor: "#14B8A6",
+    borderRadius: 999,
+    paddingHorizontal: 24,
+    paddingVertical: 12
+  },
+  emptyBtnPressed: { backgroundColor: "#0F766E" },
+  emptyBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 }
+});

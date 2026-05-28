@@ -2,414 +2,229 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   Linking,
-  Modal,
-  Pressable,
-  SafeAreaView,
   ScrollView,
-  Share,
+  StyleSheet,
   Text,
-  View
+  TouchableOpacity,
+  View,
 } from "react-native";
 
-import { getApiUrl, trpc } from "../../../lib/trpc";
+import { trpc } from "../../../lib/trpc";
 
-const POLYGONSCAN_BASE = "https://amoy.polygonscan.com/tx";
+const POLYGONSCAN_AMOY_TX_BASE_URL = "https://amoy.polygonscan.com/tx";
 
-function getRestBase(): string {
-  return getApiUrl().replace(/\/trpc$/, "");
-}
-
-type Batch = {
+type ParentBatch = {
   id: string;
   name: string;
-  gs1TraceId: string;
-  quantity: string;
+};
+
+type BatchDetail = {
+  id: string;
+  name: string;
+  quantity: string | number;
   uom: string;
   bcStatus: number;
   txHash?: string | null;
   docHash?: string | null;
-  scanCount?: number | null;
-};
-
-type GenealogyParent = {
-  parentBatch: {
-    id: string;
-    name: string;
-    gs1TraceId: string;
-    bcStatus: number;
-  };
-};
-
-type QrData = {
   gs1TraceId: string;
-  qrDataUrl: string;
-  traceUrl: string;
+  scanCount?: number;
+  createdAt?: Date | string;
+  parentBatches?: ParentBatch[];
 };
 
-function isConfirmed(batch: Batch): boolean {
+function batchIsConfirmed(batch: BatchDetail): boolean {
   return batch.bcStatus === 1 && Boolean(batch.txHash);
 }
 
-function truncateHash(hash: string, chars = 16): string {
-  return `${hash.slice(0, chars)}…${hash.slice(-6)}`;
-}
-
-// ── Blockchain badge ──────────────────────────────────────────────────────────
-
-function BlockchainBadge({ batch }: { batch: Batch }) {
-  const confirmed = isConfirmed(batch);
-  return (
-    <View
-      className={`flex-row items-center gap-2 self-start rounded-full border px-4 py-1.5 ${
-        confirmed
-          ? "border-emerald-200 bg-emerald-50"
-          : "border-amber-200 bg-amber-50"
-      }`}
-    >
-      <View
-        className={`h-2 w-2 rounded-full ${
-          confirmed ? "bg-emerald-500" : "bg-amber-400"
-        }`}
-      />
-      <Text
-        className={`text-sm font-bold ${
-          confirmed ? "text-emerald-700" : "text-amber-700"
-        }`}
-      >
-        {confirmed ? "Đã xác minh trên Polygon" : "Đang xử lý blockchain"}
-      </Text>
-    </View>
-  );
-}
-
-// ── QR modal ─────────────────────────────────────────────────────────────────
-
-function QrModal({
-  visible,
-  qrData,
-  onClose
-}: {
-  visible: boolean;
-  qrData: QrData | null;
-  onClose: () => void;
-}) {
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <View className="flex-1 items-center justify-end bg-black/50">
-        <View className="w-full rounded-t-3xl bg-white p-6 pb-10">
-          <View className="mb-4 flex-row items-center justify-between">
-            <Text className="text-xl font-bold text-slate-950">Mã QR lô hàng</Text>
-            <Pressable onPress={onClose} className="p-2">
-              <Text className="text-2xl text-slate-400">×</Text>
-            </Pressable>
-          </View>
-
-          {qrData ? (
-            <>
-              <View className="items-center py-4">
-                <Image
-                  source={{ uri: qrData.qrDataUrl }}
-                  className="h-56 w-56"
-                  resizeMode="contain"
-                  accessibilityLabel="QR code"
-                />
-              </View>
-              <Text className="mt-2 text-center font-mono text-xs text-slate-400">
-                {qrData.gs1TraceId}
-              </Text>
-              <Text className="mt-1 text-center text-xs text-slate-400" numberOfLines={2}>
-                {qrData.traceUrl}
-              </Text>
-            </>
-          ) : (
-            <View className="items-center py-12">
-              <ActivityIndicator color="#14B8A6" />
-              <Text className="mt-3 text-sm text-slate-400">Đang tải mã QR…</Text>
-            </View>
-          )}
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-// ── Main screen ───────────────────────────────────────────────────────────────
-
 export default function BatchDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-
-  const [batch, setBatch] = useState<Batch | null>(null);
-  const [parents, setParents] = useState<GenealogyParent[]>([]);
+  const [batch, setBatch] = useState<BatchDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
-
-  const [qrModalVisible, setQrModalVisible] = useState(false);
-  const [qrData, setQrData] = useState<QrData | null>(null);
-  const [isLoadingQr, setIsLoadingQr] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (!id) return;
-
+    let isMounted = true;
     async function load() {
       try {
-        const [batchResult, genealogy] = await Promise.all([
-          trpc.batches.get.query({ id }),
-          trpc.genealogy.get.query({ batchId: id })
-        ]);
-
-        setBatch({
-          id: batchResult.id,
-          name: batchResult.name,
-          gs1TraceId: batchResult.gs1TraceId,
-          quantity: batchResult.quantity,
-          uom: batchResult.uom,
-          bcStatus: batchResult.bcStatus,
-          txHash: batchResult.txHash,
-          docHash: batchResult.docHash,
-          scanCount: batchResult.scanCount
-        });
-
-        setParents(
-          genealogy.parents.map((p) => ({
-            parentBatch: {
-              id: p.parentBatch.id,
-              name: p.parentBatch.name,
-              gs1TraceId: p.parentBatch.gs1TraceId,
-              bcStatus: p.parentBatch.bcStatus
-            }
-          }))
-        );
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Không thể tải thông tin lô hàng.");
+        const result = await trpc.batches.get.query({ id });
+        if (!isMounted) return;
+        setBatch(result as BatchDetail);
+        setError(undefined);
+      } catch (loadError) {
+        if (!isMounted) return;
+        setError(loadError instanceof Error ? loadError.message : "Không thể tải thông tin lô hàng.");
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     }
-
     void load();
+    return () => { isMounted = false; };
   }, [id]);
 
-  async function handleOpenQr() {
-    setQrModalVisible(true);
-    if (qrData) return;
+  const handleCopyHash = () => {
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
-    setIsLoadingQr(true);
-    try {
-      const res = await fetch(`${getRestBase()}/batches/${id}/qr`);
-      if (!res.ok) throw new Error("QR fetch failed");
-      const data = (await res.json()) as QrData;
-      setQrData(data);
-    } catch {
-      setQrData(null);
-    } finally {
-      setIsLoadingQr(false);
-    }
-  }
-
-  async function handleShareTxHash() {
+  const handleViewOnPolygonscan = async () => {
     if (!batch?.txHash) return;
-    await Share.share({
-      message: `Vierify tx hash: ${batch.txHash}`,
-      title: "Mã giao dịch blockchain"
-    });
-  }
+    await Linking.openURL(`${POLYGONSCAN_AMOY_TX_BASE_URL}/${batch.txHash}`);
+  };
 
-  async function handleOpenPolygonscan() {
-    if (!batch?.txHash) return;
-    await Linking.openURL(`${POLYGONSCAN_BASE}/${batch.txHash}`);
-  }
+  const handleViewQr = () => {
+    // TODO: fetch GET /batches/:id/qr → { qrDataUrl } and show in modal
+  };
 
   if (isLoading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-slate-50">
-        <ActivityIndicator color="#14B8A6" />
-        <Text className="mt-3 text-sm text-slate-400">Đang tải lô hàng…</Text>
-      </SafeAreaView>
+      <View style={styles.state}>
+        <ActivityIndicator color="#14B8A6" size="large" />
+        <Text style={styles.stateText}>Đang tải lô hàng...</Text>
+      </View>
     );
   }
 
   if (error || !batch) {
     return (
-      <SafeAreaView className="flex-1 bg-slate-50">
-        <View className="flex-row items-center gap-3 border-b border-slate-200 bg-white px-5 py-4">
-          <Pressable onPress={() => router.back()} className="p-1">
-            <Text className="text-2xl text-slate-400">‹</Text>
-          </Pressable>
-          <Text className="text-lg font-bold text-slate-950">Lô hàng</Text>
-        </View>
-        <View className="m-5 rounded-2xl border border-rose-200 bg-rose-50 p-5">
-          <Text className="font-bold text-rose-900">Không tìm thấy lô hàng</Text>
-          <Text className="mt-1 text-sm text-rose-700">{error}</Text>
-        </View>
-      </SafeAreaView>
+      <View style={styles.state}>
+        <Text style={styles.stateTitle}>Không tìm thấy lô hàng</Text>
+        <Text style={styles.stateText}>{error ?? "Lô hàng không tồn tại."}</Text>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backLink}>
+          <Text style={styles.backLinkText}>← Quay lại</Text>
+        </TouchableOpacity>
+      </View>
     );
   }
 
-  const confirmed = isConfirmed(batch);
+  const confirmed = batchIsConfirmed(batch);
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50">
-      {/* Header */}
-      <View className="flex-row items-center gap-3 border-b border-slate-200 bg-white px-5 py-4">
-        <Pressable onPress={() => router.back()} className="p-1">
-          <Text className="text-2xl text-slate-400">‹</Text>
-        </Pressable>
-        <Text className="flex-1 text-lg font-bold text-slate-950" numberOfLines={1}>
-          {batch.name}
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Identity */}
+      <View style={styles.identity}>
+        <Text style={styles.batchName}>{batch.name}</Text>
+        <Text style={styles.gs1Id}>{batch.gs1TraceId}</Text>
+      </View>
+
+      {/* Badge */}
+      <View style={[styles.badge, confirmed ? styles.badgeOk : styles.badgePending]}>
+        <Text style={[styles.badgeText, confirmed ? styles.badgeOkText : styles.badgePendingText]}>
+          {confirmed ? "Đã xác minh trên Polygon" : "Đang xử lý blockchain"}
         </Text>
       </View>
 
-      <ScrollView contentContainerClassName="gap-4 p-5 pb-10">
-        {/* Identity + badge */}
-        <View className="rounded-2xl border border-slate-200 bg-white p-5 gap-3">
-          <Text className="text-2xl font-extrabold text-slate-950">{batch.name}</Text>
-          <Text className="font-mono text-xs text-slate-400">{batch.gs1TraceId}</Text>
-          <BlockchainBadge batch={batch} />
-        </View>
+      {/* Stats */}
+      <View style={styles.statsRow}>
+        {([
+          ["Khối lượng", `${batch.quantity} ${batch.uom}`],
+          ["Lượt quét", String(batch.scanCount ?? "—")],
+          ["Trạng thái", confirmed ? "Xác minh" : "Đang xử lý"],
+        ] as [string, string][]).map(([label, value], i) => (
+          <View key={i} style={[styles.statCell, i > 0 && styles.statCellBorder]}>
+            <Text style={styles.statLabel}>{label}</Text>
+            <Text style={styles.statValue}>{value}</Text>
+          </View>
+        ))}
+      </View>
 
-        {/* Stats */}
-        <View className="grid grid-cols-3 flex-row gap-3">
-          {[
-            { label: "Khối lượng", value: `${batch.quantity} ${batch.uom}` },
-            { label: "Lô cha", value: parents.length > 0 ? String(parents.length) : "—" },
-            { label: "Lượt quét", value: batch.scanCount != null ? String(batch.scanCount) : "—" }
-          ].map((stat) => (
-            <View
-              key={stat.label}
-              className="flex-1 rounded-xl border border-slate-200 bg-white p-4"
+      {/* Blockchain proof */}
+      {confirmed && batch.txHash ? (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Bằng chứng Blockchain</Text>
+          <View style={styles.txRow}>
+            <Text style={styles.txHash} numberOfLines={1}>{batch.txHash}</Text>
+            <TouchableOpacity onPress={handleCopyHash} style={styles.actionChip}>
+              <Text style={styles.actionChipText}>{copied ? "Đã sao chép" : "Sao chép"}</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity onPress={() => void handleViewOnPolygonscan()}>
+            <Text style={styles.externalLink}>Xem giao dịch trên Polygonscan Amoy →</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.pendingCard}>
+          <Text style={styles.pendingText}>
+            Lô hàng đã được ghi nhận và đang chờ xác nhận từ mạng Polygon.
+          </Text>
+        </View>
+      )}
+
+      {/* Document */}
+      {batch.docHash ? (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Tài liệu đính kèm</Text>
+          <Text style={styles.txHash} numberOfLines={1}>{batch.docHash}</Text>
+        </View>
+      ) : (
+        <TouchableOpacity style={styles.dottedCard}>
+          <Text style={styles.dottedCardText}>+ Upload tài liệu</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Parent batches */}
+      {(batch.parentBatches ?? []).length > 0 && (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Lô hàng cha</Text>
+          {(batch.parentBatches ?? []).map((parent, i) => (
+            <TouchableOpacity
+              key={parent.id}
+              onPress={() => router.push(`/(app)/(batches)/${parent.id}` as never)}
+              style={[styles.parentRow, i > 0 && styles.parentRowBorder]}
             >
-              <Text className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                {stat.label}
-              </Text>
-              <Text className="mt-1 text-base font-bold text-slate-950" numberOfLines={2}>
-                {stat.value}
-              </Text>
-            </View>
+              <Text style={styles.parentName}>{parent.name}</Text>
+              <Text style={styles.chevron}>›</Text>
+            </TouchableOpacity>
           ))}
         </View>
+      )}
 
-        {/* Blockchain proof */}
-        <View className="rounded-2xl border border-slate-200 bg-white p-5 gap-3">
-          <Text className="text-base font-bold text-slate-950">Bằng chứng blockchain</Text>
-
-          {confirmed && batch.txHash ? (
-            <>
-              <View className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                <Text className="text-xs font-medium text-slate-400">Mã giao dịch</Text>
-                <Text className="mt-1 font-mono text-sm text-slate-700" numberOfLines={2}>
-                  {truncateHash(batch.txHash)}
-                </Text>
-              </View>
-              <View className="flex-row gap-3">
-                <Pressable
-                  onPress={handleShareTxHash}
-                  className="flex-1 items-center rounded-full border border-slate-300 py-3 active:opacity-70"
-                  style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-                >
-                  <Text className="text-sm font-semibold text-slate-700">Chia sẻ</Text>
-                </Pressable>
-                <Pressable
-                  onPress={handleOpenPolygonscan}
-                  className="flex-1 items-center rounded-full bg-proof py-3 active:opacity-80"
-                  style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
-                >
-                  <Text className="text-sm font-bold text-white">Polygonscan →</Text>
-                </Pressable>
-              </View>
-            </>
-          ) : (
-            <View className="rounded-xl border border-amber-100 bg-amber-50/60 p-4 gap-2">
-              <Text className="text-sm font-semibold text-amber-900">
-                Đang chờ xác nhận
-              </Text>
-              <Text className="text-sm text-amber-700">
-                Lô hàng đã được ghi nhận và đang chờ giao dịch Polygon xác nhận.
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Document hash */}
-        {batch.docHash && (
-          <View className="rounded-2xl border border-slate-200 bg-white p-5 gap-3">
-            <Text className="text-base font-bold text-slate-950">Tài liệu đính kèm</Text>
-            <View className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-              <Text className="text-xs font-medium text-slate-400">SHA-256</Text>
-              <Text className="mt-1 font-mono text-xs text-slate-600" numberOfLines={2}>
-                {truncateHash(batch.docHash, 20)}
-              </Text>
-            </View>
-          </View>
-        )}
-
-        {/* QR button */}
-        <Pressable
-          onPress={handleOpenQr}
-          className="items-center rounded-full bg-chain py-4"
-          style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
-        >
-          <Text className="text-base font-bold text-white">Xem mã QR lô hàng</Text>
-        </Pressable>
-
-        {/* Parent batches */}
-        <View className="rounded-2xl border border-slate-200 bg-white p-5 gap-3">
-          <Text className="text-base font-bold text-slate-950">Lô hàng cha</Text>
-          {parents.length === 0 ? (
-            <Text className="text-sm text-slate-400">
-              Chưa có lô hàng cha. Thêm liên kết qua API để theo dõi nguồn gốc đầy đủ.
-            </Text>
-          ) : (
-            parents.map(({ parentBatch }) => (
-              <Pressable
-                key={parentBatch.id}
-                onPress={() =>
-                  router.push(`/(app)/(batches)/${parentBatch.id}`)
-                }
-                className="flex-row items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 active:opacity-70"
-                style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-              >
-                <View className="min-w-0 flex-1">
-                  <Text className="font-semibold text-slate-950" numberOfLines={1}>
-                    {parentBatch.name}
-                  </Text>
-                  <Text className="mt-0.5 font-mono text-xs text-slate-400" numberOfLines={1}>
-                    {parentBatch.gs1TraceId}
-                  </Text>
-                </View>
-                <View
-                  className={`ml-3 rounded-full border px-3 py-1 ${
-                    parentBatch.bcStatus === 1
-                      ? "border-emerald-200 bg-emerald-50"
-                      : "border-amber-200 bg-amber-50"
-                  }`}
-                >
-                  <Text
-                    className={`text-xs font-bold ${
-                      parentBatch.bcStatus === 1 ? "text-emerald-700" : "text-amber-700"
-                    }`}
-                  >
-                    {parentBatch.bcStatus === 1 ? "Xác minh" : "Chờ"}
-                  </Text>
-                </View>
-              </Pressable>
-            ))
-          )}
-        </View>
-      </ScrollView>
-
-      {/* QR Modal */}
-      <QrModal
-        visible={qrModalVisible}
-        qrData={isLoadingQr ? null : qrData}
-        onClose={() => setQrModalVisible(false)}
-      />
-    </SafeAreaView>
+      {/* QR */}
+      <TouchableOpacity style={styles.qrBtn} onPress={handleViewQr}>
+        <Text style={styles.qrBtnText}>Xem mã QR lô hàng</Text>
+      </TouchableOpacity>
+    </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
+  content: { padding: 20, gap: 14 },
+  state: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8, padding: 24 },
+  stateTitle: { fontSize: 17, fontWeight: "700", color: "#0F172A" },
+  stateText: { fontSize: 14, color: "#64748B", textAlign: "center" },
+  backLink: { marginTop: 8, paddingVertical: 8 },
+  backLinkText: { fontSize: 15, fontWeight: "700", color: "#14B8A6" },
+  identity: { gap: 4 },
+  batchName: { fontSize: 24, fontWeight: "800", color: "#0F172A", letterSpacing: -0.4 },
+  gs1Id: { fontSize: 12, color: "#94A3B8", fontFamily: "monospace" },
+  badge: { alignSelf: "flex-start", borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 5 },
+  badgeOk: { backgroundColor: "#ECFDF5", borderColor: "#A7F3D0" },
+  badgePending: { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" },
+  badgeText: { fontSize: 13, fontWeight: "600" },
+  badgeOkText: { color: "#065F46" },
+  badgePendingText: { color: "#92400E" },
+  statsRow: { flexDirection: "row", borderRadius: 8, borderWidth: 1, borderColor: "#E2E8F0", overflow: "hidden", backgroundColor: "#fff" },
+  statCell: { flex: 1, padding: 14, gap: 4 },
+  statCellBorder: { borderLeftWidth: 1, borderLeftColor: "#E2E8F0" },
+  statLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase", color: "#94A3B8" },
+  statValue: { fontSize: 14, fontWeight: "700", color: "#0F172A" },
+  card: { backgroundColor: "#fff", borderRadius: 10, borderWidth: 1, borderColor: "#E2E8F0", padding: 16, gap: 10 },
+  cardTitle: { fontSize: 14, fontWeight: "700", color: "#0F172A" },
+  txRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  txHash: { flex: 1, fontSize: 12, color: "#475569", fontFamily: "monospace" },
+  actionChip: { backgroundColor: "#F1F5F9", borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, flexShrink: 0 },
+  actionChipText: { fontSize: 12, fontWeight: "700", color: "#475569" },
+  externalLink: { fontSize: 13, fontWeight: "600", color: "#2563EB" },
+  pendingCard: { backgroundColor: "#FFFBEB", borderRadius: 10, borderWidth: 1, borderColor: "#FDE68A", padding: 14 },
+  pendingText: { fontSize: 13, color: "#92400E", lineHeight: 19 },
+  dottedCard: { backgroundColor: "#F8FAFC", borderRadius: 10, borderWidth: 1, borderColor: "#E2E8F0", padding: 16, alignItems: "center" },
+  dottedCardText: { fontSize: 14, fontWeight: "600", color: "#64748B" },
+  parentRow: { flexDirection: "row", alignItems: "center", paddingVertical: 8 },
+  parentRowBorder: { borderTopWidth: 1, borderTopColor: "#F1F5F9" },
+  parentName: { flex: 1, fontSize: 14, color: "#0F172A" },
+  chevron: { fontSize: 18, color: "#94A3B8" },
+  qrBtn: { backgroundColor: "#14B8A6", borderRadius: 12, paddingVertical: 15, alignItems: "center", marginTop: 4 },
+  qrBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+});

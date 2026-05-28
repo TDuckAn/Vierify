@@ -388,7 +388,7 @@ function getTiers(lang: Lang): Tier[] {
       frequency: "Real-time",
       cta: vi ? "Chọn gói này" : "Choose plan",
       highlighted: true,
-      badge: vi ? "Lựa chọn tốt nhất" : "Best value"
+      badge: "Best choice"
     },
     {
       id: "enterprise",
@@ -622,87 +622,131 @@ function Hero() {
         <div className="absolute left-1/2 top-0 h-[500px] w-[900px] -translate-x-1/2 rounded-full bg-chain/5 blur-3xl dark:bg-chain/10" />
         <div className="absolute right-0 top-1/4 h-[300px] w-[400px] rounded-full bg-proof/5 blur-3xl dark:bg-proof/10" />
       </div>
-      <div className="mx-auto max-w-6xl px-6 text-center">
-        <div className="animate-fade-in-up">
-          <span className="inline-block rounded-full border border-chain/30 bg-chain/10 px-4 py-1.5 text-sm font-semibold text-chain">
-            {t.badge}
-          </span>
-        </div>
-        <h1 className="animate-fade-in-up delay-100 mx-auto mt-6 max-w-4xl text-5xl font-extrabold leading-tight tracking-tight text-slate-950 dark:text-slate-50 lg:text-7xl">
-          {t.headlinePre}{" "}
-          <span className="text-chain">{t.headlineAccent}</span>{" "}
-          {t.headlinePost}
-        </h1>
-        <p className="animate-fade-in-up delay-200 mx-auto mt-6 max-w-2xl text-lg text-slate-600 dark:text-slate-400">
-          {t.sub}
-        </p>
-        <div className="animate-fade-in-up delay-300 mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <a
-            href="#pricing"
-            className="rounded-full bg-chain px-8 py-3.5 text-base font-semibold text-white shadow-sm transition-all hover:bg-teal-600 hover:shadow-md"
-          >
-            {t.ctaPrimary}
-          </a>
-          <a
-            href="/trace/demo"
-            className="rounded-full border border-slate-300 bg-white px-8 py-3.5 text-base font-semibold text-slate-700 transition-all hover:border-chain hover:text-chain dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-chain dark:hover:text-chain"
-          >
-            {t.ctaSecondary}
-          </a>
-        </div>
-
-        {/* Product preview */}
-        <div className="animate-fade-in delay-400 mx-auto mt-20 max-w-3xl">
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
-              <div className="h-3 w-3 rounded-full bg-rose-400" />
-              <div className="h-3 w-3 rounded-full bg-amber-400" />
-              <div className="h-3 w-3 rounded-full bg-emerald-400" />
-              <span className="ml-4 text-xs text-slate-400">vierify.vercel.app/trace/GS1-7869823...</span>
-            </div>
-            <div className="p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-                    {t.previewTag}
-                  </p>
-                  <h2 className="mt-2 text-2xl font-bold text-slate-950 dark:text-slate-50">
-                    {t.previewTitle}
-                  </h2>
-                </div>
-                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700 dark:border-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-400">
-                  {t.verified}
-                </span>
-              </div>
-              <div className="mt-6 grid grid-cols-3 gap-4">
-                {t.stats.map((stat) => (
-                  <div
-                    key={stat.label}
-                    className="rounded-lg border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60"
-                  >
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                      {stat.label}
-                    </p>
-                    <p className="mt-1 font-semibold text-slate-950 dark:text-slate-50">
-                      {stat.value}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 rounded-lg border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                  {t.txLabel}
-                </p>
-                <p className="mt-1 font-mono text-sm text-slate-700 dark:text-slate-300">
-                  0x3a8f...c4d2 —{" "}
-                  <span className="text-proof underline-offset-4 hover:underline">
-                    {t.txLink}
-                  </span>
-                </p>
-              </div>
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+          {/* Left: text */}
+          <div className="animate-fade-in-up">
+            <span className="inline-block rounded-full border border-chain/30 bg-chain/10 px-4 py-1.5 text-sm font-semibold text-chain">
+              {t.badge}
+            </span>
+            <h1 className="mt-6 text-5xl font-extrabold leading-[1.25] tracking-tight text-slate-950 dark:text-slate-50 lg:text-6xl lg:leading-[1.2]">
+              {t.headlinePre}{" "}
+              <span className="text-chain">{t.headlineAccent}</span>{" "}
+              {t.headlinePost}
+            </h1>
+            <p className="mt-6 text-lg text-slate-600 dark:text-slate-400">
+              {t.sub}
+            </p>
+            <div className="mt-10 flex flex-wrap gap-4">
+              <a
+                href="#pricing"
+                className="rounded-full bg-chain px-8 py-3.5 text-base font-semibold text-white shadow-sm transition-all hover:bg-teal-600 hover:shadow-md"
+              >
+                {t.ctaPrimary}
+              </a>
+              <a
+                href="/trace/demo"
+                className="rounded-full border border-slate-300 bg-white px-8 py-3.5 text-base font-semibold text-slate-700 transition-all hover:border-chain hover:text-chain dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-chain dark:hover:text-chain"
+              >
+                {t.ctaSecondary}
+              </a>
             </div>
           </div>
+
+          {/* Right: trace mockup */}
+          <div className="animate-fade-in delay-200">
+            <a
+              href="/trace/demo"
+              className="block overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl transition-shadow hover:shadow-chain/20 dark:border-slate-800 dark:bg-slate-900"
+            >
+              {/* Browser chrome */}
+              <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+                <div className="h-3 w-3 rounded-full bg-rose-400" />
+                <div className="h-3 w-3 rounded-full bg-amber-400" />
+                <div className="h-3 w-3 rounded-full bg-emerald-400" />
+                <span className="ml-4 rounded bg-white px-2 py-0.5 text-xs text-slate-400 dark:bg-slate-800">
+                  vierify.vn/trace/VN.GS1.8936012…
+                </span>
+              </div>
+              <div className="p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                      {t.previewTag}
+                    </p>
+                    <h2 className="mt-1.5 text-xl font-bold leading-snug text-slate-950 dark:text-slate-50">
+                      {t.previewTitle}
+                    </h2>
+                  </div>
+                  <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-400">
+                    {t.verified}
+                  </span>
+                </div>
+                {/* Stats */}
+                <div className="mt-4 grid grid-cols-3 gap-1 overflow-hidden rounded-xl border border-slate-100 dark:border-slate-800">
+                  {t.stats.map((stat) => (
+                    <div key={stat.label} className="bg-slate-50 p-3 dark:bg-slate-800/60">
+                      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{stat.label}</p>
+                      <p className="mt-0.5 text-sm font-bold text-slate-950 dark:text-slate-50">{stat.value}</p>
+                    </div>
+                  ))}
+                </div>
+                {/* Supply chain timeline */}
+                <div className="mt-4 space-y-0">
+                  {[
+                    { name: lang === "vi" ? "Nông trại Hòa Lộc" : "Hoa Loc Farm", loc: lang === "vi" ? "Tiền Giang · 14/01" : "Tien Giang · Jan 14", cur: false },
+                    { name: lang === "vi" ? "Cơ sở chế biến" : "Processing facility", loc: lang === "vi" ? "Cần Thơ · 18/01" : "Can Tho · Jan 18", cur: false },
+                    { name: lang === "vi" ? "Kho lạnh TP.HCM" : "Cold storage HCMC", loc: lang === "vi" ? "22/01/2026" : "Jan 22, 2026", cur: true }
+                  ].map((nd, i, arr) => (
+                    <div key={i} className="relative flex gap-3 pb-3 last:pb-0" style={{ paddingLeft: "1.25rem" }}>
+                      <div
+                        className={`absolute left-1 top-1.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-slate-900 ${nd.cur ? "bg-emerald-500" : "bg-chain"}`}
+                      />
+                      {i < arr.length - 1 && (
+                        <div className="absolute bottom-0 left-[0.3rem] top-4 w-px bg-slate-200 dark:bg-slate-700" />
+                      )}
+                      <div>
+                        <p className="text-xs font-semibold text-slate-950 dark:text-slate-50">{nd.name}</p>
+                        <p className="text-xs text-slate-400">{nd.loc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-center text-xs text-slate-400">Nhấp để xem trang trace đầy đủ →</p>
+              </div>
+            </a>
+          </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Demo Section ─────────────────────────────────────────────────────────────
+
+function DemoSection() {
+  const { lang } = useLang();
+  const vi = lang === "vi";
+  return (
+    <section className="bg-slate-50 py-24 dark:bg-slate-900">
+      <div className="mx-auto max-w-6xl px-6 text-center">
+        <span className="text-xs font-bold uppercase tracking-widest text-chain">
+          {vi ? "Demo trực quan" : "Live demo"}
+        </span>
+        <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 dark:text-slate-50 lg:text-4xl">
+          {vi ? "Xem Vierify hoạt động" : "See Vierify in action"}
+        </h2>
+        <p className="mx-auto mt-4 max-w-xl text-lg text-slate-600 dark:text-slate-400">
+          {vi
+            ? "Người tiêu dùng quét QR trên bao bì và thấy ngay toàn bộ nguồn gốc cùng bằng chứng blockchain."
+            : "Consumers scan a QR on packaging and immediately see the full origin story with blockchain proof."}
+        </p>
+        <a
+          href="/trace/demo"
+          className="mt-8 inline-block rounded-full bg-chain px-8 py-3.5 text-base font-semibold text-white shadow-sm transition-all hover:bg-teal-600 hover:shadow-md"
+        >
+          {vi ? "Mở trang trace demo" : "Open trace demo"}
+        </a>
       </div>
     </section>
   );
@@ -912,18 +956,20 @@ function PricingCard({ tier }: { tier: Tier }) {
       }`}
     >
       {tier.badge && (
-        <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-chain px-4 py-1 text-xs font-bold text-white">
+        <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-chain px-4 py-1 text-xs font-bold text-white">
           {tier.badge}
         </span>
       )}
 
-      <div className="mb-6">
+      <div className="mb-4">
         <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
           {tier.name}
         </p>
         <p className="mt-0.5 text-sm font-medium text-slate-500">{tier.subtitle}</p>
-        <div className="mt-4 flex items-baseline gap-1">
-          <span className="text-3xl font-extrabold text-slate-950 dark:text-slate-50">
+        <div className="mt-3 flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
+          <span className={`font-extrabold text-slate-950 dark:text-slate-50 ${
+            tier.price.length > 7 ? "text-2xl" : "text-3xl"
+          }`}>
             {tier.price}
           </span>
           {tier.period && (
@@ -932,8 +978,8 @@ function PricingCard({ tier }: { tier: Tier }) {
         </div>
       </div>
 
-      <ul className="mb-6 space-y-2 text-sm text-slate-600 dark:text-slate-400">
-        <li>📦 {tier.batches}</li>
+      <ul className="mb-4 space-y-1.5 text-sm text-slate-600 dark:text-slate-400">
+        <li className="truncate">📦 {tier.batches}</li>
         <li>👤 {tier.users}</li>
         <li>⏱ {tier.frequency}</li>
       </ul>
@@ -1188,6 +1234,7 @@ export default function HomePage(): React.ReactNode {
         <ScrollReveal><ProblemSolution /></ScrollReveal>
         <ScrollReveal><HowItWorks /></ScrollReveal>
         <ScrollReveal><Features /></ScrollReveal>
+        <ScrollReveal><DemoSection /></ScrollReveal>
         <ScrollReveal><Pricing /></ScrollReveal>
         <ScrollReveal><CTABanner /></ScrollReveal>
       </main>

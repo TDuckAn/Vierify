@@ -1,150 +1,214 @@
+import { createClient } from "@supabase/supabase-js";
 import { router } from "expo-router";
 import { useState } from "react";
+
+import { setAuthToken } from "../../lib/auth-token";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   View
 } from "react-native";
 
+function getSupabase() {
+  const url = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
+  const key = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "";
+  return createClient(url, key, { auth: { persistSession: true } });
+}
+
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | undefined>();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [kybBlocked, setKybBlocked] = useState(false);
 
   async function handleLogin() {
-    if (!email.trim() || !password) {
+    if (!email.trim() || !password.trim()) {
       setError("Vui lòng nhập email và mật khẩu.");
       return;
     }
-
-    setIsLoading(true);
-    setError(undefined);
+    setLoading(true);
+    setError(null);
     setKybBlocked(false);
 
     try {
-      // Placeholder — wire up to Supabase Auth in production
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      const supabase = getSupabase();
+      const { data, error: authErr } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password
+      });
 
-      // Simulate KYB-blocked account for demo
-      if (email.toLowerCase().includes("pending")) {
-        setKybBlocked(true);
+      if (authErr || !data.user) {
+        setError("Email hoặc mật khẩu không đúng. Vui lòng thử lại.");
         return;
       }
 
+      const role = data.user.app_metadata?.role as string | undefined;
+      if (!role || role === "viewer") {
+        setKybBlocked(true);
+        await supabase.auth.signOut();
+        return;
+      }
+
+      setAuthToken(data.session?.access_token ?? null);
       router.replace("/(app)/(batches)");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Đăng nhập thất bại. Vui lòng thử lại.");
+    } catch {
+      setError("Không thể kết nối. Vui lòng kiểm tra mạng và thử lại.");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50">
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
+    <KeyboardAvoidingView
+      style={s.flex}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={s.container}
+        keyboardShouldPersistTaps="handled"
+        bounces={false}
       >
-        <ScrollView
-          contentContainerClassName="flex-grow justify-center px-6 py-12"
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Logo */}
-          <View className="mb-10 items-center">
-            <View className="mb-4 h-16 w-16 items-center justify-center rounded-2xl bg-chain">
-              <Text className="text-3xl font-black text-white">V</Text>
-            </View>
-            <Text className="text-3xl font-extrabold tracking-tight text-slate-950">
-              Vierify
-            </Text>
-            <Text className="mt-1 text-base text-slate-500">
-              Truy xuất nguồn gốc chuỗi cung ứng
-            </Text>
+        {/* Logo */}
+        <View style={s.logoWrap}>
+          <View style={s.logoIcon}>
+            <Text style={s.checkmark}>✓</Text>
           </View>
+          <Text style={s.brand}>Vierify</Text>
+          <Text style={s.tagline}>Truy xuất nguồn gốc</Text>
+        </View>
 
-          {/* KYB blocked banner */}
-          {kybBlocked && (
-            <View className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
-              <Text className="text-sm font-bold text-amber-900">
-                Tài khoản chờ phê duyệt
-              </Text>
-              <Text className="mt-1 text-sm text-amber-700">
-                Tài khoản của bạn đang chờ xét duyệt KYB. Vui lòng liên hệ{" "}
-                <Text className="font-semibold">support@vierify.app</Text> để được
-                hỗ trợ.
-              </Text>
-            </View>
-          )}
-
-          {/* Error banner */}
-          {error && !kybBlocked && (
-            <View className="mb-6 rounded-xl border border-rose-200 bg-rose-50 p-4">
-              <Text className="text-sm text-rose-800">{error}</Text>
-            </View>
-          )}
-
-          {/* Form */}
-          <View className="gap-4">
-            <View>
-              <Text className="mb-2 text-sm font-semibold text-slate-700">
-                Email
-              </Text>
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                placeholder="ten@congty.vn"
-                placeholderTextColor="#94A3B8"
-                className="h-14 rounded-xl border border-slate-200 bg-white px-4 text-base text-slate-950"
-                style={{ fontSize: 16 }}
-              />
-            </View>
-
-            <View>
-              <Text className="mb-2 text-sm font-semibold text-slate-700">
-                Mật khẩu
-              </Text>
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                placeholder="••••••••"
-                placeholderTextColor="#94A3B8"
-                className="h-14 rounded-xl border border-slate-200 bg-white px-4 text-base text-slate-950"
-                style={{ fontSize: 16 }}
-              />
-            </View>
-
-            <Pressable
-              onPress={handleLogin}
-              disabled={isLoading}
-              className="mt-2 h-14 items-center justify-center rounded-full bg-chain active:opacity-80"
-              style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text className="text-base font-bold text-white">Đăng nhập</Text>
-              )}
-            </Pressable>
+        {/* KYB banner */}
+        {kybBlocked && (
+          <View style={s.kybBanner}>
+            <Text style={s.kybTitle}>Tài khoản chờ phê duyệt KYB</Text>
+            <Text style={s.kybSub}>Liên hệ: support@vierify.vn</Text>
           </View>
+        )}
 
-          <Text className="mt-8 text-center text-xs text-slate-400">
-            Bằng cách đăng nhập, bạn đồng ý với{" "}
-            <Text className="text-chain">Điều khoản sử dụng</Text> của Vierify.
-          </Text>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        {/* Error */}
+        {error && !kybBlocked && (
+          <View style={s.errBanner}>
+            <Text style={s.errText}>{error}</Text>
+          </View>
+        )}
+
+        {/* Form */}
+        <View>
+          <Text style={s.label}>Email</Text>
+          <TextInput
+            style={s.input}
+            value={email}
+            onChangeText={setEmail}
+            placeholder="ban@congty.com"
+            placeholderTextColor="#94A3B8"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            returnKeyType="next"
+          />
+
+          <Text style={[s.label, { marginTop: 14 }]}>Mật khẩu</Text>
+          <TextInput
+            style={[s.input, { marginBottom: 24 }]}
+            value={password}
+            onChangeText={setPassword}
+            placeholder="••••••••"
+            placeholderTextColor="#94A3B8"
+            secureTextEntry
+            autoComplete="current-password"
+            returnKeyType="done"
+            onSubmitEditing={handleLogin}
+          />
+
+          <Pressable
+            style={({ pressed }) => [s.btn, pressed && s.btnPressed, loading && s.btnDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            {loading
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={s.btnText}>Đăng nhập</Text>
+            }
+          </Pressable>
+        </View>
+
+        <Text style={s.foot}>
+          Chưa có tài khoản?{"  "}
+          <Text style={s.footLink}>Liên hệ với chúng tôi</Text>
+        </Text>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
+
+const s = StyleSheet.create({
+  flex: { flex: 1, backgroundColor: "#F8FAFC" },
+  container: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 48
+  },
+  logoWrap: { alignItems: "center", marginBottom: 44 },
+  logoIcon: {
+    width: 76,
+    height: 76,
+    borderRadius: 20,
+    backgroundColor: "#14B8A6",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16
+  },
+  checkmark: { color: "#fff", fontSize: 34, fontWeight: "700" },
+  brand: { fontSize: 26, fontWeight: "800", color: "#0F172A", letterSpacing: -0.4 },
+  tagline: { fontSize: 14, color: "#64748B", marginTop: 4 },
+  kybBanner: {
+    backgroundColor: "#FFFBEB",
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16
+  },
+  kybTitle: { fontSize: 13, fontWeight: "700", color: "#92400E" },
+  kybSub: { fontSize: 12, color: "#92400E", marginTop: 2 },
+  errBanner: {
+    backgroundColor: "#FFF1F2",
+    borderWidth: 1,
+    borderColor: "#FECDD3",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16
+  },
+  errText: { fontSize: 13, color: "#BE123C" },
+  label: { fontSize: 13, fontWeight: "600", color: "#475569", marginBottom: 6 },
+  input: {
+    height: 50,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#fff",
+    paddingHorizontal: 16,
+    fontSize: 15,
+    color: "#0F172A"
+  },
+  btn: {
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: "#14B8A6",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  btnPressed: { backgroundColor: "#0F766E" },
+  btnDisabled: { backgroundColor: "#94A3B8" },
+  btnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  foot: { marginTop: 28, fontSize: 12, color: "#94A3B8", textAlign: "center" },
+  footLink: { color: "#2563EB" }
+});
