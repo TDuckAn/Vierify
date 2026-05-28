@@ -90,7 +90,7 @@ vierify/
 ## Database Schema (key tables — Drizzle ORM)
 
 ```
-supply_chain_node  id · name · is_individual · tax_code · node_type · kyb_status · node_address
+supply_chain_node  id · org_id · name · is_individual · tax_code · node_type · kyb_status · node_address
 trace_batch        id · gs1_trace_id · name · quantity · uom · gps_lat · gps_lng
                    pin_hash · scan_count · node_id · doc_hash · bc_status(0=pending,1=confirmed) · tx_hash · version
 batch_genealogy    id · parent_batch_id · child_batch_id · mapping_date · verifier_id
@@ -180,7 +180,7 @@ See Sprint 3 task table in the Roadmap section below.
 | # | Task | Owner | Status | Priority | Acceptance criteria |
 |---|---|---|---|---|---|
 | T24 | RBAC: admin / merchant / viewer roles | Codex | 🔄 | P1 | `app_metadata.role` controls access · viewer: read-only tRPC · merchant: create/link batches · admin: KYB + all · Vitest coverage |
-| T25 | Multi-tenant orgs: node membership | Codex | ☐ | P1 | `supply_chain_node` has `org_id` · merchant belongs to exactly one org · batches scoped to org · mass-balance check stays within org boundary |
+| T25 | Multi-tenant orgs: node membership | Codex | 🔄 | P1 | `supply_chain_node` has `org_id` · merchant belongs to exactly one org · batches scoped to org · mass-balance check stays within org boundary |
 | T26 | Supabase Realtime: live scan count | Codex | ☐ | P2 | `trace_batch.scan_count` increments via Realtime channel on B2C page · no full page reload · graceful fallback if Realtime is unavailable |
 | T27 | Sentry: web + API error tracking | Codex | ☐ | P2 | `SENTRY_DSN` env var · unhandled errors captured on both surfaces · source maps uploaded in CI · free-tier 5K errors/month |
 | T28 | Oracle / Vietnam Tax Authority KYB stub | Codex | ☐ | P3 | `POST /admin/nodes/:id/kyb/verify` calls stub that validates tax code format · real VTA integration deferred to Sprint 4 |

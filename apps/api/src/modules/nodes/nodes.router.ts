@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 
+import { getTenantOrgId } from "../../context";
 import { adminProcedure, readProcedure, router } from "../../trpc";
 import {
   createNodeSchema,
@@ -13,8 +14,8 @@ export const nodesRouter = router({
   create: adminProcedure
     .input(createNodeSchema)
     .mutation(({ ctx, input }) => createNode(input, ctx.user.id)),
-  get: readProcedure.input(getNodeSchema).query(async ({ input }) => {
-    const node = await getNode(input.id);
+  get: readProcedure.input(getNodeSchema).query(async ({ ctx, input }) => {
+    const node = await getNode(input.id, getTenantOrgId(ctx.user));
 
     if (!node) {
       throw new TRPCError({
@@ -25,7 +26,9 @@ export const nodesRouter = router({
 
     return node;
   }),
-  list: readProcedure.input(listNodesSchema).query(({ input }) => listNodes(input)),
+  list: readProcedure
+    .input(listNodesSchema)
+    .query(({ ctx, input }) => listNodes(input, getTenantOrgId(ctx.user))),
   updateKybStatus: adminProcedure
     .input(updateKybStatusSchema)
     .mutation(async ({ ctx, input }) => {

@@ -12,6 +12,7 @@ export const createNodeSchema = z.object({
   name: z.string().trim().min(1).max(256),
   nodeAddress: z.string().trim().min(1).max(1024).optional(),
   nodeType: z.string().trim().min(1).max(64),
+  orgId: z.string().uuid(),
   taxCode: z.string().trim().min(1).max(64).optional()
 });
 

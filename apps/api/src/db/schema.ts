@@ -26,6 +26,7 @@ export const supplyChainNode = pgTable(
   "supply_chain_node",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    orgId: uuid("org_id").notNull(),
     name: text("name").notNull(),
     isIndividual: boolean("is_individual").default(false).notNull(),
     taxCode: varchar("tax_code", { length: 64 }),
@@ -37,6 +38,7 @@ export const supplyChainNode = pgTable(
   },
   (table) => ({
     kybStatusIdx: index("supply_chain_node_kyb_status_idx").on(table.kybStatus),
+    orgIdIdx: index("supply_chain_node_org_id_idx").on(table.orgId),
     taxCodeUniqueIdx: uniqueIndex("supply_chain_node_tax_code_unique_idx")
       .on(table.taxCode)
       .where(sql`${table.taxCode} is not null`)

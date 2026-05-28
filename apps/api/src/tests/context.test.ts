@@ -10,7 +10,7 @@ vi.mock("../lib/supabase", () => ({
   })
 }));
 
-import { requireAdminUser } from "../context";
+import { getUserFromAuthorization, requireAdminUser } from "../context";
 
 describe("requireAdminUser", () => {
   it("allows Supabase users with app_metadata.role = admin", async () => {
@@ -66,6 +66,28 @@ describe("requireAdminUser", () => {
 
     await expect(requireAdminUser("Bearer token")).rejects.toMatchObject({
       code: "FORBIDDEN"
+    });
+  });
+
+  it("reads org_id from app_metadata for tenant scoping", async () => {
+    getUserMock.mockResolvedValueOnce({
+      data: {
+        user: {
+          app_metadata: {
+            org_id: "00000000-0000-0000-0000-000000000010",
+            role: "viewer"
+          },
+          email: "viewer@example.com",
+          id: "00000000-0000-0000-0000-000000000004",
+          user_metadata: {}
+        }
+      },
+      error: null
+    });
+
+    await expect(getUserFromAuthorization("Bearer token")).resolves.toMatchObject({
+      orgId: "00000000-0000-0000-0000-000000000010",
+      role: "viewer"
     });
   });
 });

@@ -28,6 +28,7 @@ import { appRouter } from "../router";
 const ADMIN_ID = "00000000-0000-0000-0000-000000000001";
 const MERCHANT_ID = "00000000-0000-0000-0000-000000000002";
 const VIEWER_ID = "00000000-0000-0000-0000-000000000003";
+const ORG_ID = "00000000-0000-0000-0000-000000000009";
 const NODE_ID = "00000000-0000-0000-0000-000000000010";
 const BATCH_ID = "00000000-0000-0000-0000-000000000020";
 const PARENT_BATCH_ID = "00000000-0000-0000-0000-000000000021";
@@ -53,6 +54,7 @@ describe("tRPC RBAC", () => {
     const viewer = caller({
       user: {
         id: VIEWER_ID,
+        orgId: ORG_ID,
         role: "viewer"
       }
     });
@@ -72,6 +74,7 @@ describe("tRPC RBAC", () => {
     const viewer = caller({
       user: {
         id: VIEWER_ID,
+        orgId: ORG_ID,
         role: "viewer"
       }
     });
@@ -101,6 +104,7 @@ describe("tRPC RBAC", () => {
     const merchant = caller({
       user: {
         id: MERCHANT_ID,
+        orgId: ORG_ID,
         role: "merchant"
       }
     });
@@ -123,14 +127,15 @@ describe("tRPC RBAC", () => {
       code: "FORBIDDEN"
     });
 
-    expect(createBatch).toHaveBeenCalledWith(createBatchInput, MERCHANT_ID);
+    expect(createBatch).toHaveBeenCalledWith(createBatchInput, MERCHANT_ID, ORG_ID);
     expect(linkGenealogy).toHaveBeenCalledWith(
       {
         childBatchId: BATCH_ID,
         parentBatchIds: [PARENT_BATCH_ID],
         wasteTolerance: 0.05
       },
-      MERCHANT_ID
+      MERCHANT_ID,
+      ORG_ID
     );
   });
 
@@ -171,6 +176,19 @@ describe("tRPC RBAC", () => {
     });
 
     await expect(unassigned.batches.list({ limit: 50 })).rejects.toMatchObject({
+      code: "FORBIDDEN"
+    });
+  });
+
+  it("rejects non-admin roles without app_metadata.org_id", async () => {
+    const merchantWithoutOrg = caller({
+      user: {
+        id: MERCHANT_ID,
+        role: "merchant"
+      }
+    });
+
+    await expect(merchantWithoutOrg.batches.list({ limit: 50 })).rejects.toMatchObject({
       code: "FORBIDDEN"
     });
   });

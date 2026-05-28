@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { getDb } from "../../db/client";
@@ -24,7 +24,11 @@ function anonymiseNode(node: NodeProjection): NodeProjection {
   };
 }
 
-export async function createBatch(input: z.infer<typeof createBatchSchema>, actorId: string) {
+export async function createBatch(
+  input: z.infer<typeof createBatchSchema>,
+  actorId: string,
+  orgId?: string
+) {
   const db = getDb();
   const [node] = await db
     .select()
@@ -35,6 +39,13 @@ export async function createBatch(input: z.infer<typeof createBatchSchema>, acto
     throw new TRPCError({
       code: "NOT_FOUND",
       message: "Supply chain node not found."
+    });
+  }
+
+  if (orgId && node.orgId !== orgId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Batch node is outside the user's organization."
     });
   }
 
@@ -71,8 +82,19 @@ export async function createBatch(input: z.infer<typeof createBatchSchema>, acto
   return batch;
 }
 
-export async function getBatch(id: string) {
+export async function getBatch(id: string, orgId?: string) {
   const db = getDb();
+
+  if (orgId) {
+    const [row] = await db
+      .select({ batch: traceBatch })
+      .from(traceBatch)
+      .innerJoin(supplyChainNode, eq(traceBatch.nodeId, supplyChainNode.id))
+      .where(and(eq(traceBatch.id, id), eq(supplyChainNode.orgId, orgId)));
+
+    return row?.batch;
+  }
+
   const [batch] = await db.select().from(traceBatch).where(eq(traceBatch.id, id));
 
   return batch;
@@ -99,8 +121,25 @@ export async function getBatchByTraceId(gs1TraceId: string) {
   };
 }
 
-export async function listBatches(input: z.infer<typeof listBatchesSchema>) {
+export async function listBatches(input: z.infer<typeof listBatchesSchema>, orgId?: string) {
   const db = getDb();
+
+  if (orgId) {
+    const filters = [
+      eq(supplyChainNode.orgId, orgId),
+      input.nodeId ? eq(traceBatch.nodeId, input.nodeId) : undefined
+    ].filter((filter) => filter !== undefined);
+
+    const rows = await db
+      .select({ batch: traceBatch })
+      .from(traceBatch)
+      .innerJoin(supplyChainNode, eq(traceBatch.nodeId, supplyChainNode.id))
+      .where(and(...filters))
+      .orderBy(desc(traceBatch.createdAt))
+      .limit(input.limit);
+
+    return rows.map((row) => row.batch);
+  }
 
   if (input.nodeId) {
     return db

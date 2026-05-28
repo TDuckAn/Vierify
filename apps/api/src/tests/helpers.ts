@@ -4,6 +4,8 @@ import { createDb, type DbClient } from "../db/client";
 import { batchGenealogy, supplyChainNode, traceBatch } from "../db/schema";
 
 export const TEST_ACTOR_ID = "00000000-0000-0000-0000-000000000099";
+export const TEST_ORG_ID = "00000000-0000-0000-0000-000000000001";
+export const OTHER_TEST_ORG_ID = "00000000-0000-0000-0000-000000000002";
 
 export function getTestDb(): DbClient {
   const url = process.env.DATABASE_URL;
@@ -33,6 +35,7 @@ export async function insertTestNode(
       kybStatus: "approved",
       name: "Test Farm",
       nodeType: "farm",
+      orgId: TEST_ORG_ID,
       ...overrides,
     })
     .returning();

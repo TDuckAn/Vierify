@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 
+import { getTenantOrgId } from "../../context";
 import { merchantProcedure, publicProcedure, readProcedure, router } from "../../trpc";
 import {
   createBatchSchema,
@@ -17,9 +18,9 @@ import {
 export const batchesRouter = router({
   create: merchantProcedure
     .input(createBatchSchema)
-    .mutation(({ ctx, input }) => createBatch(input, ctx.user.id)),
-  get: readProcedure.input(getBatchSchema).query(async ({ input }) => {
-    const batch = await getBatch(input.id);
+    .mutation(({ ctx, input }) => createBatch(input, ctx.user.id, getTenantOrgId(ctx.user))),
+  get: readProcedure.input(getBatchSchema).query(async ({ ctx, input }) => {
+    const batch = await getBatch(input.id, getTenantOrgId(ctx.user));
 
     if (!batch) {
       throw new TRPCError({
@@ -42,5 +43,7 @@ export const batchesRouter = router({
 
     return result;
   }),
-  list: readProcedure.input(listBatchesSchema).query(({ input }) => listBatches(input))
+  list: readProcedure
+    .input(listBatchesSchema)
+    .query(({ ctx, input }) => listBatches(input, getTenantOrgId(ctx.user)))
 });

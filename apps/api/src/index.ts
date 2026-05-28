@@ -7,7 +7,12 @@ import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
 import Fastify from "fastify";
 import { z } from "zod";
 
-import { createContext, requireAdminUser, requireMerchantUser } from "./context";
+import {
+  createContext,
+  getTenantOrgId,
+  requireAdminUser,
+  requireMerchantUser
+} from "./context";
 import {
   MAX_DOCUMENT_UPLOAD_BYTES,
   uploadBatchDocument
@@ -111,7 +116,8 @@ server.post("/batches/:child_id/parents", async (request, reply) => {
         parentBatchIds: body.data.parentBatchIds,
         wasteTolerance: body.data.wasteTolerance
       },
-      user.id
+      user.id,
+      getTenantOrgId(user)
     );
 
     return reply.code(201).send({ links });
@@ -169,7 +175,8 @@ server.post("/batches/:id/document", async (request, reply) => {
         fileName: file.filename,
         mimeType: file.mimetype
       },
-      user.id
+      user.id,
+      getTenantOrgId(user)
     );
 
     return reply.code(201).send(result);

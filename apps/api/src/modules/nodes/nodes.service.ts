@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import { getDb } from "../../db/client";
 import { auditLog, supplyChainNode } from "../../db/schema";
@@ -18,6 +18,7 @@ export async function createNode(input: z.infer<typeof createNodeSchema>, actorI
       name: input.name,
       nodeAddress: input.nodeAddress,
       nodeType: input.nodeType,
+      orgId: input.orgId,
       taxCode: input.taxCode
     })
     .returning();
@@ -31,21 +32,34 @@ export async function createNode(input: z.infer<typeof createNodeSchema>, actorI
   return node;
 }
 
-export async function getNode(id: string) {
+export async function getNode(id: string, orgId?: string) {
   const db = getDb();
-  const [node] = await db.select().from(supplyChainNode).where(eq(supplyChainNode.id, id));
+  const [node] = await db
+    .select()
+    .from(supplyChainNode)
+    .where(
+      orgId
+        ? and(eq(supplyChainNode.id, id), eq(supplyChainNode.orgId, orgId))
+        : eq(supplyChainNode.id, id)
+    );
 
   return node;
 }
 
-export async function listNodes(input: z.infer<typeof listNodesSchema>) {
+export async function listNodes(input: z.infer<typeof listNodesSchema>, orgId?: string) {
   const db = getDb();
+
+  const filters = [
+    input.kybStatus ? eq(supplyChainNode.kybStatus, input.kybStatus) : undefined,
+    orgId ? eq(supplyChainNode.orgId, orgId) : undefined
+  ].filter((filter) => filter !== undefined);
+  const where = filters.length > 0 ? and(...filters) : undefined;
 
   if (input.kybStatus) {
     return db
       .select()
       .from(supplyChainNode)
-      .where(eq(supplyChainNode.kybStatus, input.kybStatus))
+      .where(where)
       .orderBy(desc(supplyChainNode.createdAt))
       .limit(input.limit);
   }
@@ -53,6 +67,7 @@ export async function listNodes(input: z.infer<typeof listNodesSchema>) {
   return db
     .select()
     .from(supplyChainNode)
+    .where(where)
     .orderBy(desc(supplyChainNode.createdAt))
     .limit(input.limit);
 }

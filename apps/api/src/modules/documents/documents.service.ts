@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { getDb } from "../../db/client";
-import { auditLog, traceBatch } from "../../db/schema";
+import { auditLog, supplyChainNode, traceBatch } from "../../db/schema";
 import { getSupabaseAdmin } from "../../lib/supabase";
 import { enqueueHashBatchJob } from "../../queues/blockchain.queue";
 
@@ -33,7 +33,8 @@ function sha256Hex(buffer: Buffer): string {
 
 export async function uploadBatchDocument(
   input: UploadBatchDocumentInput,
-  actorId: string
+  actorId: string,
+  orgId?: string
 ) {
   if (input.fileBuffer.byteLength === 0) {
     throw new TRPCError({
@@ -50,10 +51,16 @@ export async function uploadBatchDocument(
   }
 
   const db = getDb();
-  const [batch] = await db
-    .select({ id: traceBatch.id })
-    .from(traceBatch)
-    .where(eq(traceBatch.id, input.batchId));
+  const [batch] = orgId
+    ? await db
+        .select({ id: traceBatch.id })
+        .from(traceBatch)
+        .innerJoin(supplyChainNode, eq(traceBatch.nodeId, supplyChainNode.id))
+        .where(and(eq(traceBatch.id, input.batchId), eq(supplyChainNode.orgId, orgId)))
+    : await db
+        .select({ id: traceBatch.id })
+        .from(traceBatch)
+        .where(eq(traceBatch.id, input.batchId));
 
   if (!batch) {
     throw new TRPCError({

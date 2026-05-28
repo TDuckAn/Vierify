@@ -2,7 +2,7 @@ import { eq, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { getDb } from "../../db/client";
-import { auditLog, batchGenealogy, traceBatch } from "../../db/schema";
+import { auditLog, batchGenealogy, supplyChainNode, traceBatch } from "../../db/schema";
 import type { linkGenealogySchema } from "./genealogy.schema";
 import type { z } from "zod";
 
@@ -59,9 +59,23 @@ async function hasCircularReference(
   return false;
 }
 
+async function getBatchOrgRows(batchIds: string[]) {
+  const db = getDb();
+
+  return db
+    .select({
+      batchId: traceBatch.id,
+      orgId: supplyChainNode.orgId
+    })
+    .from(traceBatch)
+    .innerJoin(supplyChainNode, eq(traceBatch.nodeId, supplyChainNode.id))
+    .where(inArray(traceBatch.id, batchIds));
+}
+
 export async function linkGenealogy(
   input: z.infer<typeof linkGenealogySchema>,
-  actorId: string
+  actorId: string,
+  orgId?: string
 ) {
   if (input.parentBatchIds.includes(input.childBatchId)) {
     throw new TRPCError({
@@ -102,6 +116,26 @@ export async function linkGenealogy(
     });
   }
 
+  const batchOrgRows = await getBatchOrgRows([
+    input.childBatchId,
+    ...input.parentBatchIds
+  ]);
+  const linkedOrgIds = new Set(batchOrgRows.map((row) => row.orgId));
+
+  if (linkedOrgIds.size > 1) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "Batch genealogy cannot cross organization boundaries."
+    });
+  }
+
+  if (orgId && !linkedOrgIds.has(orgId)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Batch genealogy is outside the user's organization."
+    });
+  }
+
   const childQuantity = parseQuantity(childBatch.quantity);
   const parentQuantity = parentBatches.reduce(
     (sum, batch) => sum + parseQuantity(batch.quantity),
@@ -135,8 +169,19 @@ export async function linkGenealogy(
   return links;
 }
 
-export async function getGenealogy(batchId: string) {
+export async function getGenealogy(batchId: string, orgId?: string) {
   const db = getDb();
+
+  if (orgId) {
+    const [batchOrg] = await getBatchOrgRows([batchId]);
+
+    if (!batchOrg || batchOrg.orgId !== orgId) {
+      return {
+        children: [],
+        parents: []
+      };
+    }
+  }
 
   const parents = await db
     .select({

@@ -35,6 +35,13 @@ function roleProcedure(allowedRoles: readonly AuthRole[]) {
   return protectedProcedure.use(({ ctx, next }) => {
     requireRole(ctx.user.role, allowedRoles);
 
+    if (ctx.user.role !== "admin" && !ctx.user.orgId) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Organization membership required."
+      });
+    }
+
     return next({
       ctx
     });

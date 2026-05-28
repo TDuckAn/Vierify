@@ -11,6 +11,7 @@ export type AuthRole = (typeof AUTH_ROLES)[number];
 export type AuthUser = {
   email?: string;
   id: string;
+  orgId?: string;
   role?: AuthRole;
 };
 
@@ -44,10 +45,19 @@ function getStringMetadataValue(
   return typeof value === "string" ? value : undefined;
 }
 
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function getUserRole(user: User): AuthRole | undefined {
   const role = getStringMetadataValue(user.app_metadata, "role");
 
   return AUTH_ROLES.find((authRole) => authRole === role);
+}
+
+function getUserOrgId(user: User): string | undefined {
+  const orgId = getStringMetadataValue(user.app_metadata, "org_id");
+
+  return orgId && UUID_REGEX.test(orgId) ? orgId : undefined;
 }
 
 export async function getUserFromAuthorization(
@@ -74,6 +84,7 @@ export async function getUserFromAuthorization(
   return {
     email: user.email,
     id: user.id,
+    orgId: getUserOrgId(user),
     role: getUserRole(user)
   };
 }
@@ -83,6 +94,13 @@ function assertUserHasRole(user: AuthUser, allowedRoles: readonly AuthRole[]) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: `${allowedRoles.join(" or ")} role required.`
+    });
+  }
+
+  if (user.role !== "admin" && !user.orgId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Organization membership required."
     });
   }
 }
@@ -111,6 +129,21 @@ export async function requireMerchantUser(authorization: string | undefined): Pr
 
 export async function requireAdminUser(authorization: string | undefined): Promise<AuthUser> {
   return requireUserWithRole(authorization, ["admin"]);
+}
+
+export function getTenantOrgId(user: AuthUser): string | undefined {
+  if (user.role === "admin") {
+    return undefined;
+  }
+
+  if (!user.orgId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Organization membership required."
+    });
+  }
+
+  return user.orgId;
 }
 
 export async function createContext({
