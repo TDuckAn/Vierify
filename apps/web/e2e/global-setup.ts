@@ -3,7 +3,8 @@ import ws from "ws";
 
 // Fixed GS1 trace ID used by qr-timeline.spec.ts confirmed-state tests.
 // globalSetup upserts this batch; globalTeardown deletes it.
-export const TEST_GS1_TRACE_ID = "GS1-PLAYWRIGHT-E2E-0001";
+// Must match the DB check: ^01[0-9]{14}10[A-Za-z0-9./-]{1,20}$
+export const TEST_GS1_TRACE_ID = "011234567890123410E2ETEST01";
 export const TEST_TX_HASH =
   "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
 // Matches the sentinel used by Vitest tests so any helper that filters by org
