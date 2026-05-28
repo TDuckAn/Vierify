@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/node";
+import { nodeProfilingIntegration } from "@sentry/profiling-node";
 
 function readSampleRate(value: string | undefined): number {
   if (!value) {
@@ -16,12 +17,16 @@ if (dsn) {
     dsn,
     enableLogs: true,
     environment: process.env.SENTRY_ENVIRONMENT ?? process.env.NODE_ENV ?? "development",
-    includeLocalVariables: true,
     integrations: [
+      nodeProfilingIntegration(),
       Sentry.fastifyIntegration({
         shouldHandleError: (_error, _request, reply) => reply.statusCode >= 500
       })
     ],
+    profileLifecycle: "trace",
+    profileSessionSampleRate: readSampleRate(
+      process.env.SENTRY_PROFILE_SESSION_SAMPLE_RATE
+    ),
     release: process.env.SENTRY_RELEASE,
     sendDefaultPii: false,
     tracesSampleRate: readSampleRate(process.env.SENTRY_TRACES_SAMPLE_RATE)

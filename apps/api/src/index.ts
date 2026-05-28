@@ -48,6 +48,16 @@ server.get("/health", async () => ({
   service: "vierify-api"
 }));
 
+if (process.env.ENABLE_SENTRY_DEBUG_ROUTE === "true") {
+  server.get("/debug-sentry", async () => {
+    Sentry.logger.info("User triggered test error", {
+      action: "test_error_endpoint"
+    });
+    Sentry.metrics.count("test_counter", 1);
+    throw new Error("My first Sentry error!");
+  });
+}
+
 const linkParentsParamsSchema = z.object({
   child_id: z.string().uuid()
 });
