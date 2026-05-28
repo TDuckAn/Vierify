@@ -2,6 +2,26 @@ import { expect, test } from "@playwright/test";
 
 test.describe("Marketing landing page", () => {
   test.beforeEach(async ({ page }) => {
+    // Mock IntersectionObserver so ScrollReveal reveals elements immediately in headless CI.
+    // Must be added before goto() so the override is in place when page scripts run.
+    await page.addInitScript(() => {
+      (window as any).IntersectionObserver = class {
+        private _cb: Function;
+        constructor(cb: Function) { this._cb = cb; }
+        observe(el: Element) {
+          setTimeout(() => {
+            this._cb([{
+              isIntersecting: true, target: el, intersectionRatio: 1,
+              boundingClientRect: {}, intersectionRect: {}, rootBounds: null,
+              time: Date.now()
+            }], this);
+          }, 0);
+        }
+        unobserve(_el: Element) {}
+        disconnect() {}
+        takeRecords() { return []; }
+      };
+    });
     await page.goto("/");
   });
 
@@ -26,9 +46,10 @@ test.describe("Marketing landing page", () => {
   });
 
   test("nav bar shows section links", async ({ page }) => {
-    await expect(page.getByRole("link", { name: "Cách hoạt động" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Tính năng" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Bảng giá" })).toBeVisible();
+    const nav = page.getByRole("navigation");
+    await expect(nav.getByRole("link", { name: "Cách hoạt động" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Tính năng" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Bảng giá" })).toBeVisible();
   });
 
   // ── Pricing section ──────────────────────────────────────────────────────
@@ -43,7 +64,7 @@ test.describe("Marketing landing page", () => {
 
   test("Professional tier has 'Lựa chọn tốt nhất' badge", async ({ page }) => {
     await page.locator("#pricing").scrollIntoViewIfNeeded();
-    await expect(page.getByText("Lựa chọn tốt nhất")).toBeVisible();
+    await expect(page.getByText("Lựa chọn tốt nhất").first()).toBeVisible();
   });
 
   test("pricing shows correct prices for each tier", async ({ page }) => {
@@ -113,10 +134,11 @@ test.describe("Marketing landing page", () => {
   });
 
   test("features section is present", async ({ page }) => {
-    await page.locator("#features").scrollIntoViewIfNeeded();
-    await expect(page.getByText("Quét mã GS1 Barcode")).toBeVisible();
-    await expect(page.getByText("Bằng chứng blockchain")).toBeVisible();
-    await expect(page.getByText("Trang truy xuất B2C")).toBeVisible();
+    const features = page.locator("#features");
+    await features.scrollIntoViewIfNeeded();
+    await expect(features.getByText("Quét mã GS1 Barcode")).toBeVisible();
+    await expect(features.getByText("Bằng chứng blockchain")).toBeVisible();
+    await expect(features.getByText("Trang truy xuất B2C")).toBeVisible();
   });
 
   // ── Footer ───────────────────────────────────────────────────────────────

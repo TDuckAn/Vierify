@@ -30,19 +30,29 @@ export default async function globalSetup(): Promise<void> {
     .delete()
     .eq("gs1_trace_id", TEST_GS1_TRACE_ID);
 
-  // Upsert a test supply-chain node (non-individual so PII is not masked).
-  const { data: node, error: nodeErr } = await supabase
+  // Find or create the test supply-chain node. We avoid upsert({onConflict:"name"})
+  // because supply_chain_node.name has no unique constraint (42P10).
+  const { data: existingNode } = await supabase
     .from("supply_chain_node")
-    .upsert(
-      { name: "Playwright Test Farm", is_individual: false, kyb_status: "approved" },
-      { onConflict: "name" }
-    )
     .select("id")
-    .single();
+    .eq("name", "Playwright Test Farm")
+    .maybeSingle();
 
-  if (nodeErr) {
-    console.error("Playwright global-setup: failed to upsert test node", nodeErr);
-    return;
+  let nodeId: string;
+  if (existingNode) {
+    nodeId = existingNode.id;
+  } else {
+    const { data: newNode, error: nodeErr } = await supabase
+      .from("supply_chain_node")
+      .insert({ name: "Playwright Test Farm", is_individual: false, kyb_status: "approved" })
+      .select("id")
+      .single();
+
+    if (nodeErr) {
+      console.error("Playwright global-setup: failed to insert test node", nodeErr);
+      return;
+    }
+    nodeId = newNode.id;
   }
 
   // Insert the confirmed test batch.
@@ -53,7 +63,7 @@ export default async function globalSetup(): Promise<void> {
     uom: "kg",
     bc_status: 1,
     tx_hash: TEST_TX_HASH,
-    node_id: node.id,
+    node_id: nodeId,
     scan_count: 3
   });
 
