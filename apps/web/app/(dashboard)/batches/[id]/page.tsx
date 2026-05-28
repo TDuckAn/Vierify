@@ -1,16 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { use, useState } from "react";
+import { useState } from "react";
 
 import { trpc } from "../../../../lib/trpc";
 import { getApiUrl } from "../../../../lib/trpc";
 import { createBrowserSupabaseClient } from "../../../../lib/supabase";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: { id: string } };
 
 export default function BatchDetailPage({ params }: Props) {
-  const { id } = use(params);
+  const { id } = params;
   const { data: batch, isPending, isError } = trpc.batches.get.useQuery({ id });
   const { data: genealogy } = trpc.genealogy.get.useQuery({ batchId: id });
 
