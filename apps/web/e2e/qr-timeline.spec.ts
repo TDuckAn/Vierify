@@ -84,7 +84,8 @@ test.describe("B2C trace timeline — /trace/[id]", () => {
     });
 
     test("shows emerald 'Đã xác minh trên Polygon' badge", async ({ page }) => {
-      const badge = page.getByText("Đã xác minh trên Polygon");
+      // Page now renders this badge in two places (proof section + timeline entry); pick the first
+      const badge = page.getByText("Đã xác minh trên Polygon").first();
       await expect(badge).toBeVisible();
       // Badge must carry emerald styling (not amber)
       await expect(badge).toHaveClass(/emerald/);
@@ -133,7 +134,8 @@ test.describe("B2C trace timeline — /trace/[id]", () => {
     test("current batch appears as the last timeline entry with emerald dot", async ({
       page
     }) => {
-      const timelineSection = page.locator("section, div").filter({
+      // "section, div" also matches the outer min-h-screen wrapper; narrow to <section> only
+      const timelineSection = page.locator("section").filter({
         has: page.getByText("Hành trình chuỗi cung ứng")
       });
       await expect(timelineSection).toBeVisible();

@@ -63,25 +63,35 @@ test.describe("Marketing landing page", () => {
 
   test("pricing section shows all 5 tiers", async ({ page }) => {
     await page.locator("#pricing").scrollIntoViewIfNeeded();
-
+    // The feature comparison table header always shows all 5 tier names regardless of viewport
     for (const tierName of ["Free", "Basic", "Advanced", "Professional", "Enterprise"]) {
-      await expect(page.getByText(tierName).first()).toBeVisible();
+      await expect(page.locator("#pricing thead").getByText(tierName, { exact: true })).toBeVisible();
     }
   });
 
   test("Professional tier has 'Lựa chọn tốt nhất' badge", async ({ page }) => {
     await page.locator("#pricing").scrollIntoViewIfNeeded();
-    await expect(page.getByText("Lựa chọn tốt nhất").first()).toBeVisible();
+    // Cards are rendered in both a mobile-scroll and a desktop-grid container; target the visible one
+    const viewport = page.viewportSize();
+    const pricingCards = (viewport && viewport.width >= 1024)
+      ? page.locator("#pricing").locator('[class*="grid-cols-5"]')
+      : page.locator("#pricing").locator('[class*="overflow-x-auto"]');
+    await expect(pricingCards.getByText("Lựa chọn tốt nhất").first()).toBeVisible();
   });
 
   test("pricing shows correct prices for each tier", async ({ page }) => {
     await page.locator("#pricing").scrollIntoViewIfNeeded();
+    // Target only the visible card container to avoid the hidden duplicate
+    const viewport = page.viewportSize();
+    const pricingCards = (viewport && viewport.width >= 1024)
+      ? page.locator("#pricing").locator('[class*="grid-cols-5"]')
+      : page.locator("#pricing").locator('[class*="overflow-x-auto"]');
 
-    await expect(page.getByText("0đ").first()).toBeVisible();
-    await expect(page.getByText("99.000đ").first()).toBeVisible();
-    await expect(page.getByText("499.000đ").first()).toBeVisible();
-    await expect(page.getByText("4.999.999đ").first()).toBeVisible();
-    await expect(page.getByText("Liên hệ").first()).toBeVisible();
+    await expect(pricingCards.getByText("0đ").first()).toBeVisible();
+    await expect(pricingCards.getByText("99.000đ").first()).toBeVisible();
+    await expect(pricingCards.getByText("499.000đ").first()).toBeVisible();
+    await expect(pricingCards.getByText("4.999.999đ").first()).toBeVisible();
+    await expect(pricingCards.getByText("Liên hệ").first()).toBeVisible();
   });
 
   test("feature comparison table is rendered", async ({ page }) => {
