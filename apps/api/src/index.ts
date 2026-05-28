@@ -7,7 +7,7 @@ import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
 import Fastify from "fastify";
 import { z } from "zod";
 
-import { createContext, getUserFromAuthorization, requireAdminUser } from "./context";
+import { createContext, requireAdminUser, requireMerchantUser } from "./context";
 import {
   MAX_DOCUMENT_UPLOAD_BYTES,
   uploadBatchDocument
@@ -103,14 +103,7 @@ server.post("/batches/:child_id/parents", async (request, reply) => {
   }
 
   try {
-    const user = await getUserFromAuthorization(request.headers.authorization);
-
-    if (!user) {
-      throw new TRPCError({
-        code: "UNAUTHORIZED",
-        message: "Authentication required."
-      });
-    }
+    const user = await requireMerchantUser(request.headers.authorization);
 
     const links = await linkGenealogy(
       {
@@ -153,14 +146,7 @@ server.post("/batches/:id/document", async (request, reply) => {
   }
 
   try {
-    const user = await getUserFromAuthorization(request.headers.authorization);
-
-    if (!user) {
-      throw new TRPCError({
-        code: "UNAUTHORIZED",
-        message: "Authentication required."
-      });
-    }
+    const user = await requireMerchantUser(request.headers.authorization);
 
     const file = await request.file({
       limits: {

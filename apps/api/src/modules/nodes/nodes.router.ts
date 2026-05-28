@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 
-import { adminProcedure, protectedProcedure, router } from "../../trpc";
+import { adminProcedure, readProcedure, router } from "../../trpc";
 import {
   createNodeSchema,
   getNodeSchema,
@@ -10,10 +10,10 @@ import {
 import { createNode, getNode, listNodes, updateKybStatus } from "./nodes.service";
 
 export const nodesRouter = router({
-  create: protectedProcedure
+  create: adminProcedure
     .input(createNodeSchema)
     .mutation(({ ctx, input }) => createNode(input, ctx.user.id)),
-  get: protectedProcedure.input(getNodeSchema).query(async ({ input }) => {
+  get: readProcedure.input(getNodeSchema).query(async ({ input }) => {
     const node = await getNode(input.id);
 
     if (!node) {
@@ -25,7 +25,7 @@ export const nodesRouter = router({
 
     return node;
   }),
-  list: protectedProcedure.input(listNodesSchema).query(({ input }) => listNodes(input)),
+  list: readProcedure.input(listNodesSchema).query(({ input }) => listNodes(input)),
   updateKybStatus: adminProcedure
     .input(updateKybStatusSchema)
     .mutation(async ({ ctx, input }) => {

@@ -177,15 +177,15 @@ See Sprint 3 task table in the Roadmap section below.
 
 #### Core Sprint 3 (Week 8–10)
 
-| # | Task | Owner | Priority | Acceptance criteria |
-|---|---|---|---|---|
-| T24 | RBAC: admin / merchant / viewer roles | Codex | P1 | `app_metadata.role` controls access · viewer: read-only tRPC · merchant: create/link batches · admin: KYB + all · Vitest coverage |
-| T25 | Multi-tenant orgs: node membership | Codex | P1 | `supply_chain_node` has `org_id` · merchant belongs to exactly one org · batches scoped to org · mass-balance check stays within org boundary |
-| T26 | Supabase Realtime: live scan count | Codex | P2 | `trace_batch.scan_count` increments via Realtime channel on B2C page · no full page reload · graceful fallback if Realtime is unavailable |
-| T27 | Sentry: web + API error tracking | Codex | P2 | `SENTRY_DSN` env var · unhandled errors captured on both surfaces · source maps uploaded in CI · free-tier 5K errors/month |
-| T28 | Oracle / Vietnam Tax Authority KYB stub | Codex | P3 | `POST /admin/nodes/:id/kyb/verify` calls stub that validates tax code format · real VTA integration deferred to Sprint 4 |
-| T29 | Vitest: RBAC + multi-tenant tests | Claude | P1 | Written after T24/T25 ship · covers: viewer blocked from create, merchant blocked from other org's batches, admin can access all |
-| T30 | Playwright: authenticated B2B flows | Claude | P2 | Login → create batch → link parent → view QR · requires T24 complete |
+| # | Task | Owner | Status | Priority | Acceptance criteria |
+|---|---|---|---|---|---|
+| T24 | RBAC: admin / merchant / viewer roles | Codex | 🔄 | P1 | `app_metadata.role` controls access · viewer: read-only tRPC · merchant: create/link batches · admin: KYB + all · Vitest coverage |
+| T25 | Multi-tenant orgs: node membership | Codex | ☐ | P1 | `supply_chain_node` has `org_id` · merchant belongs to exactly one org · batches scoped to org · mass-balance check stays within org boundary |
+| T26 | Supabase Realtime: live scan count | Codex | ☐ | P2 | `trace_batch.scan_count` increments via Realtime channel on B2C page · no full page reload · graceful fallback if Realtime is unavailable |
+| T27 | Sentry: web + API error tracking | Codex | ☐ | P2 | `SENTRY_DSN` env var · unhandled errors captured on both surfaces · source maps uploaded in CI · free-tier 5K errors/month |
+| T28 | Oracle / Vietnam Tax Authority KYB stub | Codex | ☐ | P3 | `POST /admin/nodes/:id/kyb/verify` calls stub that validates tax code format · real VTA integration deferred to Sprint 4 |
+| T29 | Vitest: RBAC + multi-tenant tests | Claude | ☐ | P1 | Written after T24/T25 ship · covers: viewer blocked from create, merchant blocked from other org's batches, admin can access all |
+| T30 | Playwright: authenticated B2B flows | Claude | ☐ | P2 | Login → create batch → link parent → view QR · requires T24 complete |
 
 #### Outstanding debt carried from Sprint 2
 

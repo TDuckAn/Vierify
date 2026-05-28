@@ -1,6 +1,6 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 
-import type { Context } from "./context";
+import type { AuthRole, Context } from "./context";
 
 const t = initTRPC.context<Context>().create();
 
@@ -21,15 +21,26 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
     }
   });
 });
-export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.user.role !== "admin") {
+
+function requireRole(role: AuthRole | undefined, allowedRoles: readonly AuthRole[]) {
+  if (!role || !allowedRoles.includes(role)) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "Admin role required."
+      message: `${allowedRoles.join(" or ")} role required.`
     });
   }
+}
 
-  return next({
-    ctx
+function roleProcedure(allowedRoles: readonly AuthRole[]) {
+  return protectedProcedure.use(({ ctx, next }) => {
+    requireRole(ctx.user.role, allowedRoles);
+
+    return next({
+      ctx
+    });
   });
-});
+}
+
+export const readProcedure = roleProcedure(["admin", "merchant", "viewer"]);
+export const merchantProcedure = roleProcedure(["admin", "merchant"]);
+export const adminProcedure = roleProcedure(["admin"]);

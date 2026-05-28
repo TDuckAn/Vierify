@@ -4,10 +4,14 @@ import type { User } from "@supabase/supabase-js";
 
 import { getSupabaseAdmin } from "./lib/supabase";
 
+export const AUTH_ROLES = ["admin", "merchant", "viewer"] as const;
+
+export type AuthRole = (typeof AUTH_ROLES)[number];
+
 export type AuthUser = {
   email?: string;
   id: string;
-  role?: string;
+  role?: AuthRole;
 };
 
 export type Context = {
@@ -40,8 +44,10 @@ function getStringMetadataValue(
   return typeof value === "string" ? value : undefined;
 }
 
-function getUserRole(user: User): string | undefined {
-  return getStringMetadataValue(user.app_metadata, "role");
+function getUserRole(user: User): AuthRole | undefined {
+  const role = getStringMetadataValue(user.app_metadata, "role");
+
+  return AUTH_ROLES.find((authRole) => authRole === role);
 }
 
 export async function getUserFromAuthorization(
@@ -72,7 +78,19 @@ export async function getUserFromAuthorization(
   };
 }
 
-export async function requireAdminUser(authorization: string | undefined): Promise<AuthUser> {
+function assertUserHasRole(user: AuthUser, allowedRoles: readonly AuthRole[]) {
+  if (!user.role || !allowedRoles.includes(user.role)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: `${allowedRoles.join(" or ")} role required.`
+    });
+  }
+}
+
+async function requireUserWithRole(
+  authorization: string | undefined,
+  allowedRoles: readonly AuthRole[]
+): Promise<AuthUser> {
   const user = await getUserFromAuthorization(authorization);
 
   if (!user) {
@@ -82,14 +100,17 @@ export async function requireAdminUser(authorization: string | undefined): Promi
     });
   }
 
-  if (user.role !== "admin") {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "Admin role required."
-    });
-  }
+  assertUserHasRole(user, allowedRoles);
 
   return user;
+}
+
+export async function requireMerchantUser(authorization: string | undefined): Promise<AuthUser> {
+  return requireUserWithRole(authorization, ["admin", "merchant"]);
+}
+
+export async function requireAdminUser(authorization: string | undefined): Promise<AuthUser> {
+  return requireUserWithRole(authorization, ["admin"]);
 }
 
 export async function createContext({

@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 
-import { protectedProcedure, publicProcedure, router } from "../../trpc";
+import { merchantProcedure, publicProcedure, readProcedure, router } from "../../trpc";
 import {
   createBatchSchema,
   getBatchByTraceIdSchema,
@@ -15,10 +15,10 @@ import {
 } from "./batches.service";
 
 export const batchesRouter = router({
-  create: protectedProcedure
+  create: merchantProcedure
     .input(createBatchSchema)
     .mutation(({ ctx, input }) => createBatch(input, ctx.user.id)),
-  get: protectedProcedure.input(getBatchSchema).query(async ({ input }) => {
+  get: readProcedure.input(getBatchSchema).query(async ({ input }) => {
     const batch = await getBatch(input.id);
 
     if (!batch) {
@@ -42,5 +42,5 @@ export const batchesRouter = router({
 
     return result;
   }),
-  list: protectedProcedure.input(listBatchesSchema).query(({ input }) => listBatches(input))
+  list: readProcedure.input(listBatchesSchema).query(({ input }) => listBatches(input))
 });
