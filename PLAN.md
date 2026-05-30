@@ -12,7 +12,11 @@
 Supply chain traceability platform backed by Polygon blockchain.
 - **MerchantApp** (B2B): factory workers scan/link product batches; data hashed to blockchain
 - **Consumer Web** (B2C): end-users scan QR → see farm-to-table timeline with blockchain proof
-- **Targets**: Website · Windows · macOS · Android · iOS
+- **Targets**: Single responsive web app (marketing + B2B dashboard + B2C timeline) — PWA installable on mobile
+
+> **Pivot decision (Week 8):** Dropped Expo mobile + Electron desktop. Team lacks test devices;
+> every feature requires internet; web dashboard already 85% complete and mobile-responsive.
+> Single Next.js deployment via Vercel replaces all 3 native distribution channels.
 
 ---
 
@@ -31,8 +35,8 @@ Supply chain traceability platform backed by Polygon blockchain.
 | Layer | Technology | Free Tier Used |
 |---|---|---|
 | Monorepo | Turborepo | Open source |
-| Mobile (iOS + Android) | Expo SDK 54 + React Native 0.81 | EAS Build: 30 builds/month |
-| Desktop (Win + macOS) | Electron 32 + React 18 | Open source; local builds |
+| ~~Mobile (iOS + Android)~~ | ~~Expo SDK 54 + React Native 0.81~~ | **Archived** — replaced by responsive PWA |
+| ~~Desktop (Win + macOS)~~ | ~~Electron 32 + React 18~~ | **Deprecated** — browser accesses Vercel URL directly |
 | Web | Next.js 15 (App Router) | Vercel Hobby (free) |
 | API | Fastify 5 + tRPC v11 | Render free web service |
 | Database | Supabase PostgreSQL 15 | 500 MB, 2 projects free |
@@ -57,9 +61,9 @@ Supply chain traceability platform backed by Polygon blockchain.
 ```
 vierify/
 ├── apps/
-│   ├── mobile/          # Expo — MerchantApp (iOS + Android)
-│   ├── desktop/         # Electron — MerchantApp (Windows + macOS)
-│   ├── web/             # Next.js — marketing site + B2C timeline
+│   ├── mobile/          # ARCHIVED — Expo app (replaced by responsive web PWA)
+│   ├── desktop/         # DEPRECATED — Electron wrapper (superseded by web)
+│   ├── web/             # PRIMARY — Next.js: marketing + B2B dashboard + B2C timeline
 │   └── api/             # Fastify + tRPC backend
 ├── packages/
 │   ├── ui/              # Shared React components (NativeWind + Tailwind)
@@ -196,16 +200,29 @@ audit_log          id · actor_id · action · resource_id · created_at  ← ap
 | Language toggle (vi/en) full i18n | Claude Design | Stubbed in UI — wire `next-intl` or React context in Sprint 3 |
 
 ### Sprint 4 — Week 11–13
-- Play Store submission via EAS Submit
-- App Store submission via EAS Submit
-- Windows code signing (apply for cert Week 11)
-- Performance pass: Next.js PageSpeed > 85
-- Data anonymisation audit (Decree 13/2023/NĐ-CP compliance)
-- Security review (Claude runs security-review skill)
+
+> Pivot: App Store / Play Store submissions dropped. Focus is completing the web app and shipping web-only v1.
+
+| # | Task | Owner | Priority | Status |
+|---|---|---|---|---|
+| T32 | Archive `apps/mobile`; remove from CI release workflow | Claude | P0 | ✅ |
+| T33 | Genealogy linking UI on batch create form + detail page | Claude | P0 | ☐ |
+| T34 | HTML5 QR scanner route `/dashboard/scan` (jsqr + getUserMedia) | Claude | P0 | ☐ |
+| T35 | Mass balance error message with suggested quantity | Claude | P1 | ☐ |
+| T36 | Batch list pagination + filter tabs (Tất cả / Đã xác minh / Đang xử lý) | Claude | P1 | ☐ |
+| T37 | KYB approval SLA banner on login + dashboard | Claude | P1 | ☐ |
+| T38 | Document upload drag-drop polish on batch detail | Claude | P2 | ☐ |
+| T39 | PWA manifest + install prompt (Add to Home Screen) | Claude | P2 | ☐ |
+| T40 | Batch expiry date field — schema (Codex) + UI (Claude) | Codex + Claude | P3 | ☐ |
+| T41 | Update Playwright tests for T33–T39 | Claude | P1 | ☐ |
+| T42 | Security review (`/security-review` skill) | Claude | P0 | ☐ |
+| T43 | Performance pass: Next.js PageSpeed > 85 | Claude | P1 | ☐ |
+| T44 | Data anonymisation audit (Decree 13/2023/NĐ-CP) | Claude | P1 | ☐ |
 
 ### v1 Launch — Week 14
 - Migrate Polygon Amoy → PoS Mainnet
-- All platforms live and store-approved
+- Web app live on Vercel (custom domain)
+- PWA install prompt tested on iOS Safari + Android Chrome
 - 50 B2B partner onboarding pipeline ready
 - Monitoring: Sentry alerts + uptime checks
 - Runbook documented

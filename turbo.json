@@ -8,7 +8,6 @@
         "artifacts/**",
         "cache/**",
         "dist/**",
-        "dist-electron/**",
         "build/**",
         "out/**"
       ]

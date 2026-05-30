@@ -10,66 +10,26 @@ env:
   PNPM_VERSION: "9.15.9"
 
 jobs:
-  # ── Android APK via EAS Build ───────────────────────────────────────────────
-  # T11 — requires EAS_TOKEN secret + eas.json configured in apps/mobile
-  android:
-    name: Android APK (EAS Build)
+  # ── GitHub Release note ─────────────────────────────────────────────────────
+  # Creates a GitHub Release on every version tag.
+  # The production app is deployed automatically by Vercel on push to main —
+  # no build artifact needed here. Release note links to the live Vercel URL.
+  release:
+    name: Create GitHub Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build Android APK
-        run: pnpm --filter @vierify/mobile build:android:preview
-        env:
-          EXPO_TOKEN: ${{ secrets.EAS_TOKEN }}
-
-  # ── Electron Windows + macOS via Electron Builder ──────────────────────────
-  # T12 — unsigned builds OK for MVP; add code signing certs in Sprint 4
-  desktop:
-    name: Desktop Builds (Electron Builder)
-    strategy:
-      matrix:
-        include:
-          - os: windows-latest
-            command: package:win
-            artifact: "apps/desktop/release/*.exe"
-          - os: macos-latest
-            command: package:mac
-            artifact: "apps/desktop/release/*.dmg"
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build desktop app
-        run: pnpm --filter @vierify/desktop ${{ matrix.command }}
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: "false"
-
-      - name: Upload artifact to GitHub Release
+      - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ matrix.artifact }}
+          generate_release_notes: true
+          body: |
+            ## Vierify ${{ github.ref_name }}
+
+            Production deploy: https://vierify.vercel.app
+
+            > Web-only release — responsive PWA for desktop and mobile browsers.
+            > No app store download required; use "Add to Home Screen" on iOS/Android.
