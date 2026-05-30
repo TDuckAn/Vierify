@@ -6,13 +6,42 @@ import { useState } from "react";
 import { createBrowserSupabaseClient } from "../../../../lib/supabase";
 import { getApiUrl, trpc } from "../../../../lib/trpc";
 
+function isMassBalanceError(msg: string) {
+  return msg.toLowerCase().includes("mass balance");
+}
+
 export default function BatchDetailClient({ id }: { id: string }): React.ReactNode {
+  const utils = trpc.useUtils();
   const { data: batch, isPending, isError } = trpc.batches.get.useQuery({ id });
   const { data: genealogy } = trpc.genealogy.get.useQuery({ batchId: id });
+  const { data: allBatches } = trpc.batches.list.useQuery({ limit: 100 });
 
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Parent linking state
+  const [showLinkPanel, setShowLinkPanel] = useState(false);
+  const [linkSearch, setLinkSearch] = useState("");
+  const [linkSelectedIds, setLinkSelectedIds] = useState<string[]>([]);
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  const linkMutation = trpc.genealogy.link.useMutation({
+    onSuccess: async () => {
+      await utils.genealogy.get.invalidate({ batchId: id });
+      setShowLinkPanel(false);
+      setLinkSelectedIds([]);
+      setLinkSearch("");
+      setLinkError(null);
+    },
+    onError: (err) => {
+      setLinkError(
+        isMassBalanceError(err.message)
+          ? "Không thể liên kết: tổng khối lượng đầu vào vượt quá giới hạn cho phép (±5%). Kiểm tra lại số lượng các lô cha."
+          : err.message
+      );
+    }
+  });
 
   async function loadQr() {
     setQrLoading(true);
@@ -34,6 +63,22 @@ export default function BatchDetailClient({ id }: { id: string }): React.ReactNo
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
+
+  function toggleLinkId(pid: string) {
+    setLinkSelectedIds((prev) =>
+      prev.includes(pid) ? prev.filter((x) => x !== pid) : [...prev, pid]
+    );
+  }
+
+  const existingParentIds = new Set(genealogy?.parents?.map((p) => p.parentBatch.id) ?? []);
+
+  const linkableBatches = (allBatches ?? []).filter(
+    (b) =>
+      b.id !== id &&
+      !existingParentIds.has(b.id) &&
+      (b.name.toLowerCase().includes(linkSearch.toLowerCase()) ||
+        b.gs1TraceId.toLowerCase().includes(linkSearch.toLowerCase()))
+  );
 
   if (isPending) {
     return (
@@ -147,6 +192,7 @@ export default function BatchDetailClient({ id }: { id: string }): React.ReactNo
         )}
       </Card>
 
+      {/* Parent batches */}
       <Card title="Lô hàng cha">
         {genealogy?.parents && genealogy.parents.length > 0 ? (
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -167,6 +213,69 @@ export default function BatchDetailClient({ id }: { id: string }): React.ReactNo
         ) : (
           <p className="text-sm text-slate-500 dark:text-slate-400">Chưa có lô hàng cha nào được liên kết.</p>
         )}
+
+        {/* Link panel toggle */}
+        <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={() => { setShowLinkPanel((v) => !v); setLinkError(null); }}
+            className="text-sm text-proof hover:underline"
+          >
+            {showLinkPanel ? "Thu gọn" : "+ Thêm lô hàng cha"}
+          </button>
+
+          {showLinkPanel && (
+            <div className="mt-3 space-y-3">
+              <input
+                type="text"
+                value={linkSearch}
+                onChange={(e) => setLinkSearch(e.target.value)}
+                placeholder="Tìm theo tên hoặc GS1 ID…"
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-chain focus:ring-2 focus:ring-chain/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-50"
+              />
+
+              {linkableBatches.length === 0 ? (
+                <p className="text-center text-sm text-slate-400 py-2">Không tìm thấy lô hàng nào</p>
+              ) : (
+                <ul className="max-h-48 overflow-y-auto divide-y divide-slate-100 rounded-lg border border-slate-200 dark:divide-slate-700 dark:border-slate-700">
+                  {linkableBatches.map((b) => (
+                    <li key={b.id}>
+                      <label className="flex cursor-pointer items-start gap-3 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800">
+                        <input
+                          type="checkbox"
+                          checked={linkSelectedIds.includes(b.id)}
+                          onChange={() => toggleLinkId(b.id)}
+                          className="mt-0.5 accent-chain"
+                        />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{b.name}</p>
+                          <p className="truncate font-mono text-xs text-slate-400">{b.gs1TraceId.slice(0, 28)}…</p>
+                        </div>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {linkError && (
+                <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-400">
+                  {linkError}
+                </p>
+              )}
+
+              <button
+                type="button"
+                disabled={linkSelectedIds.length === 0 || linkMutation.isPending}
+                onClick={() =>
+                  linkMutation.mutate({ childBatchId: id, parentBatchIds: linkSelectedIds })
+                }
+                className="rounded-lg bg-chain px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {linkMutation.isPending ? "Đang liên kết…" : `Liên kết${linkSelectedIds.length > 0 ? ` (${linkSelectedIds.length})` : ""}`}
+              </button>
+            </div>
+          )}
+        </div>
       </Card>
 
       {batch.docHash && (
