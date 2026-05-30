@@ -1,7 +1,7 @@
 # Vierify — Project Plan
 
-> **Week 8 / 14** | Sprint 2 ✅ complete | Sprint 3 ✅ complete | Sprint 4 starts Week 11 | v1 deadline: end of Week 14
-> **CI status (2026-05-28):** ✅ green
+> **Week 8 / 14** | Sprint 2 ✅ complete | Sprint 3 ✅ complete | Sprint 4 🔄 in progress | v1 deadline: end of Week 14
+> **CI status (2026-05-30):** ✅ green · T32–T39, T41, T42 shipped
 > **Agent note:** Codex quota exhausted — GitHub Copilot (GPT 5.2) available for backend tasks via `.github/copilot-instructions.md`
 > Task legend: `☐` not started · `🔄` in progress · `✅` done · `❌` blocked
 
@@ -211,11 +211,11 @@ audit_log          id · actor_id · action · resource_id · created_at  ← ap
 | T35 | Mass balance error message with suggested quantity | Claude | P1 | ✅ |
 | T36 | Batch list pagination + filter tabs (Tất cả / Đã xác minh / Đang xử lý) | Claude | P1 | ✅ |
 | T37 | KYB approval SLA banner on login + dashboard | Claude | P1 | ✅ |
-| T38 | Document upload drag-drop polish on batch detail | Claude | P2 | ☐ |
+| T38 | Document upload drag-drop polish on batch detail | Claude | P2 | ✅ |
 | T39 | PWA manifest + install prompt (Add to Home Screen) | Claude | P2 | ✅ |
 | T40 | Batch expiry date field — schema (Codex) + UI (Claude) | Codex + Claude | P3 | ☐ |
-| T41 | Update Playwright tests for T33–T39 | Claude | P1 | ☐ |
-| T42 | Security review (`/security-review` skill) | Claude | P0 | ☐ |
+| T41 | Update Playwright tests for T33–T39 | Claude | P1 | ✅ |
+| T42 | Security review (`/security-review` skill) | Claude | P0 | ✅ |
 | T43 | Performance pass: Next.js PageSpeed > 85 | Claude | P1 | ☐ |
 | T44 | Data anonymisation audit (Decree 13/2023/NĐ-CP) | Claude | P1 | ☐ |
 
