@@ -206,13 +206,13 @@ audit_log          id · actor_id · action · resource_id · created_at  ← ap
 | # | Task | Owner | Priority | Status |
 |---|---|---|---|---|
 | T32 | Archive `apps/mobile`; remove from CI release workflow | Claude | P0 | ✅ |
-| T33 | Genealogy linking UI on batch create form + detail page | Claude | P0 | ☐ |
-| T34 | HTML5 QR scanner route `/dashboard/scan` (jsqr + getUserMedia) | Claude | P0 | ☐ |
-| T35 | Mass balance error message with suggested quantity | Claude | P1 | ☐ |
-| T36 | Batch list pagination + filter tabs (Tất cả / Đã xác minh / Đang xử lý) | Claude | P1 | ☐ |
-| T37 | KYB approval SLA banner on login + dashboard | Claude | P1 | ☐ |
+| T33 | Genealogy linking UI on batch create form + detail page | Claude | P0 | ✅ |
+| T34 | HTML5 QR scanner route `/dashboard/scan` (jsqr + getUserMedia) | Claude | P0 | ✅ |
+| T35 | Mass balance error message with suggested quantity | Claude | P1 | ✅ |
+| T36 | Batch list pagination + filter tabs (Tất cả / Đã xác minh / Đang xử lý) | Claude | P1 | ✅ |
+| T37 | KYB approval SLA banner on login + dashboard | Claude | P1 | ✅ |
 | T38 | Document upload drag-drop polish on batch detail | Claude | P2 | ☐ |
-| T39 | PWA manifest + install prompt (Add to Home Screen) | Claude | P2 | ☐ |
+| T39 | PWA manifest + install prompt (Add to Home Screen) | Claude | P2 | ✅ |
 | T40 | Batch expiry date field — schema (Codex) + UI (Claude) | Codex + Claude | P3 | ☐ |
 | T41 | Update Playwright tests for T33–T39 | Claude | P1 | ☐ |
 | T42 | Security review (`/security-review` skill) | Claude | P0 | ☐ |
