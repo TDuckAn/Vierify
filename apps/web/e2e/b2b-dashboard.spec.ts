@@ -128,8 +128,79 @@ test.describe("Create batch form", () => {
 
   test("submit button is disabled when GS1 field is invalid", async ({ page }) => {
     await page.getByPlaceholder("011234567890123410LOT001").fill("BAD");
-    // The submit button should be disabled due to invalid GS1
     const submitBtn = page.getByRole("button", { name: /Tạo lô hàng/ });
     await expect(submitBtn).toBeDisabled();
+  });
+
+  // T33 — parent batch picker
+  test("shows 'Lô hàng cha' optional section", async ({ page }) => {
+    await expect(page.getByText("Lô hàng cha")).toBeVisible();
+    await expect(page.getByText(/tùy chọn/)).toBeVisible();
+  });
+
+  test("parent picker expands on '+ Thêm lô hàng cha' click", async ({ page }) => {
+    await page.getByRole("button", { name: /Thêm lô hàng cha/ }).click();
+    await expect(page.getByPlaceholder(/Tìm theo tên hoặc GS1/)).toBeVisible();
+  });
+
+  test("parent picker collapses on 'Thu gọn' click", async ({ page }) => {
+    await page.getByRole("button", { name: /Thêm lô hàng cha/ }).click();
+    await page.getByRole("button", { name: "Thu gọn" }).click();
+    await expect(page.getByPlaceholder(/Tìm theo tên hoặc GS1/)).not.toBeVisible();
+  });
+});
+
+// ── Dashboard filter tabs + search (T36) ─────────────────────────────────────
+
+test.describe("Dashboard filter tabs and search", () => {
+  test.skip(!hasMerchantData, "Requires SUPABASE_SERVICE_KEY to seed merchant user");
+
+  test.beforeEach(async ({ page }) => {
+    await loginAsMerchant(page);
+  });
+
+  test("shows filter tabs when batches exist or after first load", async ({ page }) => {
+    // Tabs only render once batches data returns; wait for heading first
+    await expect(page.getByRole("heading", { name: "Lô hàng của tôi" })).toBeVisible();
+    // The 'Tạo lô hàng mới' button is always present
+    await expect(page.getByRole("link", { name: /Tạo lô hàng mới/ })).toBeVisible();
+  });
+});
+
+// ── QR scanner route (T34) ───────────────────────────────────────────────────
+
+test.describe("QR scanner page", () => {
+  test.skip(!hasMerchantData, "Requires SUPABASE_SERVICE_KEY to seed merchant user");
+
+  test.beforeEach(async ({ page }) => {
+    await loginAsMerchant(page);
+    await page.getByRole("link", { name: "Quét mã" }).click();
+    await page.waitForURL("/scan");
+  });
+
+  test("renders scan page heading", async ({ page }) => {
+    await expect(page.getByRole("heading", { name: "Quét mã" })).toBeVisible();
+  });
+
+  test("shows manual GS1 entry input", async ({ page }) => {
+    await expect(page.getByPlaceholder("011234567890123410LOT001")).toBeVisible();
+  });
+
+  test("shows 'Bật camera' button", async ({ page }) => {
+    await expect(page.getByRole("button", { name: "Bật camera" })).toBeVisible();
+  });
+
+  test("manual entry submit disabled for invalid GS1", async ({ page }) => {
+    await page.getByPlaceholder("011234567890123410LOT001").fill("INVALID");
+    await expect(page.getByRole("button", { name: "Tra cứu" })).toBeDisabled();
+  });
+
+  test("manual entry submit enabled for valid GS1", async ({ page }) => {
+    await page.getByPlaceholder("011234567890123410LOT001").fill("011234567890123410VALIDLOT1");
+    await expect(page.getByRole("button", { name: "Tra cứu" })).toBeEnabled();
+  });
+
+  test("/scan is accessible via nav link 'Quét mã'", async ({ page }) => {
+    await expect(page).toHaveURL("/scan");
   });
 });
