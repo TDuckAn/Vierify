@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 
 import { trpc } from "../../../lib/trpc";
 
@@ -9,8 +10,49 @@ const BC_STATUS: Record<number, { label: string; cls: string }> = {
   1: { label: "Đã xác minh", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" }
 };
 
+const PAGE_SIZE = 20;
+
+type TabKey = "all" | "confirmed" | "pending";
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: "all", label: "Tất cả" },
+  { key: "confirmed", label: "Đã xác minh" },
+  { key: "pending", label: "Đang xử lý" }
+];
+
 export default function DashboardPage(): React.ReactNode {
   const { data: batches, isPending, isError } = trpc.batches.list.useQuery({ limit: 100 });
+
+  const [tab, setTab] = useState<TabKey>("all");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+
+  const filtered = (batches ?? []).filter((b) => {
+    const matchesTab =
+      tab === "all" ||
+      (tab === "confirmed" && b.bcStatus === 1) ||
+      (tab === "pending" && b.bcStatus !== 1);
+    const q = search.toLowerCase();
+    const matchesSearch =
+      !q ||
+      b.name.toLowerCase().includes(q) ||
+      b.gs1TraceId.toLowerCase().includes(q);
+    return matchesTab && matchesSearch;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  function handleTabChange(key: TabKey) {
+    setTab(key);
+    setPage(1);
+  }
+
+  function handleSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
 
   return (
     <div>
@@ -24,6 +66,34 @@ export default function DashboardPage(): React.ReactNode {
           + Tạo lô hàng mới
         </Link>
       </div>
+
+      {/* Tabs + Search bar */}
+      {!isPending && !isError && batches && batches.length > 0 && (
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-800">
+            {TABS.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => handleTabChange(key)}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                  tab === key
+                    ? "bg-white text-slate-950 shadow-sm dark:bg-slate-700 dark:text-slate-50"
+                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => handleSearch(e.target.value)}
+            placeholder="Tìm theo tên hoặc GS1 ID…"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-chain focus:ring-2 focus:ring-chain/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-50 sm:w-64"
+          />
+        </div>
+      )}
 
       {/* Loading skeletons */}
       {isPending && (
@@ -41,7 +111,7 @@ export default function DashboardPage(): React.ReactNode {
         </div>
       )}
 
-      {/* Empty state */}
+      {/* Empty state — no batches at all */}
       {!isPending && !isError && batches?.length === 0 && (
         <div className="flex flex-col items-center rounded-2xl border-2 border-dashed border-slate-200 py-16 text-center dark:border-slate-800">
           <div className="mb-3 text-4xl">📦</div>
@@ -56,8 +126,16 @@ export default function DashboardPage(): React.ReactNode {
         </div>
       )}
 
+      {/* Empty state — filter/search yields nothing */}
+      {!isPending && !isError && batches && batches.length > 0 && filtered.length === 0 && (
+        <div className="flex flex-col items-center rounded-2xl border-2 border-dashed border-slate-200 py-12 text-center dark:border-slate-800">
+          <p className="font-medium text-slate-700 dark:text-slate-300">Không tìm thấy lô hàng</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Thử thay đổi bộ lọc hoặc từ khoá tìm kiếm.</p>
+        </div>
+      )}
+
       {/* Batch table — desktop */}
-      {!isPending && !isError && batches && batches.length > 0 && (
+      {!isPending && !isError && paginated.length > 0 && (
         <>
           {/* Table: md+ */}
           <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 md:block">
@@ -70,7 +148,7 @@ export default function DashboardPage(): React.ReactNode {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {batches.map((batch) => {
+                {paginated.map((batch) => {
                   const status = BC_STATUS[batch.bcStatus as keyof typeof BC_STATUS] ?? BC_STATUS[0];
                   return (
                     <tr key={batch.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-800/40">
@@ -103,7 +181,7 @@ export default function DashboardPage(): React.ReactNode {
 
           {/* Cards: mobile */}
           <div className="space-y-3 md:hidden">
-            {batches.map((batch) => {
+            {paginated.map((batch) => {
               const status = BC_STATUS[batch.bcStatus as keyof typeof BC_STATUS] ?? BC_STATUS[0];
               return (
                 <Link
@@ -127,6 +205,31 @@ export default function DashboardPage(): React.ReactNode {
               );
             })}
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
+              <span>
+                Lô hàng {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} / {filtered.length}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setPage((p) => p - 1)}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800"
+                >
+                  ← Trước
+                </button>
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800"
+                >
+                  Sau →
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
