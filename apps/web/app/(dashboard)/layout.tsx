@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { createBrowserSupabaseClient } from "../../lib/supabase";
 import { TRPCProvider } from "../../lib/trpc-provider";
+import { KybBanner } from "../../components/kyb-banner";
 import { ThemeToggle } from "../../components/theme-toggle";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }): React.ReactNode {
@@ -72,6 +73,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
+        <KybBanner />
         <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
       </div>
     </TRPCProvider>
