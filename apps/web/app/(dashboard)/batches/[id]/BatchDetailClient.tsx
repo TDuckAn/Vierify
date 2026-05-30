@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { createBrowserSupabaseClient } from "../../../../lib/supabase";
 import { getApiUrl, trpc } from "../../../../lib/trpc";
@@ -19,6 +19,14 @@ export default function BatchDetailClient({ id }: { id: string }): React.ReactNo
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Document upload state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [uploadState, setUploadState] = useState<"idle" | "uploading" | "success" | "error">("idle");
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [uploadedHash, setUploadedHash] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Parent linking state
   const [showLinkPanel, setShowLinkPanel] = useState(false);
@@ -62,6 +70,55 @@ export default function BatchDetailClient({ id }: { id: string }): React.ReactNo
     await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function uploadDocument(file: File) {
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError("Tệp vượt quá giới hạn 10 MB.");
+      setUploadState("error");
+      return;
+    }
+
+    setUploadState("uploading");
+    setUploadError(null);
+
+    const supabase = createBrowserSupabaseClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    const base = getApiUrl().replace("/trpc", "");
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch(`${base}/batches/${id}/document`, {
+      method: "POST",
+      headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+      body: formData
+    });
+
+    if (res.ok) {
+      const json = await res.json() as { docHash: string };
+      setUploadedFileName(file.name);
+      setUploadedHash(json.docHash);
+      setUploadState("success");
+      await utils.batches.get.invalidate({ id });
+    } else {
+      const json = await res.json().catch(() => ({})) as { error?: string };
+      setUploadError(json.error ?? "Tải lên thất bại. Vui lòng thử lại.");
+      setUploadState("error");
+    }
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) uploadDocument(file);
+    e.target.value = "";
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) uploadDocument(file);
   }
 
   function toggleLinkId(pid: string) {
@@ -278,11 +335,65 @@ export default function BatchDetailClient({ id }: { id: string }): React.ReactNo
         </div>
       </Card>
 
-      {batch.docHash && (
-        <Card title="Tài liệu đính kèm">
-          <p className="font-mono text-xs text-slate-600 break-all dark:text-slate-400">{batch.docHash}</p>
-        </Card>
-      )}
+      {/* Document upload */}
+      <Card title="Tài liệu đính kèm">
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+
+        {/* Existing doc hash */}
+        {(batch.docHash || uploadState === "success") && (
+          <div className="mb-4 rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
+            <p className="mb-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+              {uploadState === "success" && uploadedFileName ? uploadedFileName : "Tài liệu hiện tại"}
+            </p>
+            <p className="break-all font-mono text-xs text-slate-600 dark:text-slate-300">
+              {uploadState === "success" && uploadedHash ? uploadedHash : batch.docHash}
+            </p>
+          </div>
+        )}
+
+        {/* Drag-and-drop zone */}
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+          className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition ${
+            dragOver
+              ? "border-chain bg-chain/5"
+              : "border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600"
+          }`}
+        >
+          {uploadState === "uploading" ? (
+            <>
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-chain border-t-transparent" />
+              <p className="text-sm text-slate-500 dark:text-slate-400">Đang tải lên…</p>
+            </>
+          ) : uploadState === "success" ? (
+            <>
+              <span className="text-2xl">✅</span>
+              <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Tải lên thành công</p>
+              <p className="text-xs text-slate-400">Nhấn để thay thế tài liệu</p>
+            </>
+          ) : (
+            <>
+              <span className="text-2xl text-slate-300 dark:text-slate-600">📎</span>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Kéo thả tệp vào đây hoặc <span className="text-proof">chọn tệp</span>
+              </p>
+              <p className="text-xs text-slate-400">Tối đa 10 MB</p>
+            </>
+          )}
+        </div>
+
+        {uploadError && (
+          <p className="mt-2 text-sm text-rose-600 dark:text-rose-400">{uploadError}</p>
+        )}
+      </Card>
     </div>
   );
 }
