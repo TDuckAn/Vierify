@@ -59,6 +59,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <NavLink href="/dashboard" current={pathname === "/dashboard"}>
                   Lô hàng
                 </NavLink>
+                <NavLink href="/scan" current={pathname === "/scan"}>
+                  Quét mã
+                </NavLink>
               </nav>
             </div>
             <div className="flex items-center gap-3">
