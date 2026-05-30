@@ -50,10 +50,12 @@ function anonymiseNode(node: TraceNode): TraceNode {
     return node;
   }
 
+  // Mask all personal identifiers for individual suppliers (Decree 13/2023/NĐ-CP)
   return {
     ...node,
     name: "***",
-    node_address: "***"
+    node_address: "***",
+    tax_code: null
   };
 }
 

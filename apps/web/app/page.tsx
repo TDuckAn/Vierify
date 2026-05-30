@@ -624,8 +624,8 @@ function Hero() {
       </div>
       <div className="mx-auto max-w-6xl px-6">
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-          {/* Left: text */}
-          <div className="animate-fade-in-up">
+          {/* Left: text — no animation so h1 is visible immediately (LCP) */}
+          <div>
             <span className="inline-block rounded-full border border-chain/30 bg-chain/10 px-4 py-1.5 text-sm font-semibold text-chain">
               {t.badge}
             </span>

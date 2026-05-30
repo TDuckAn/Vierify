@@ -57,6 +57,25 @@ describe("PII anonymisation — B2C getBatchByTraceId", () => {
     expect(result?.node.nodeAddress).toBe("456 Industrial Zone, Ho Chi Minh City");
   });
 
+  it("masks taxCode for is_individual = true nodes (Decree 13/2023/NĐ-CP)", async () => {
+    const node = await insertTestNode(db, {
+      isIndividual: true,
+      name: "Nguyen Thi B",
+      nodeAddress: "78 Private St, Hanoi",
+      taxCode: "0123456789"
+    });
+    nodeIds.push(node.id);
+
+    const gs1TraceId = makeGs1Id();
+    await insertTestBatch(db, node.id, { gs1TraceId });
+
+    const result = await getBatchByTraceId(gs1TraceId);
+
+    expect(result?.node.taxCode).toBeNull();
+    expect(result?.node.name).toBe("***");
+    expect(result?.node.nodeAddress).toBe("***");
+  });
+
   it("exposes all non-PII batch fields regardless of node type", async () => {
     const node = await insertTestNode(db, { isIndividual: true });
     nodeIds.push(node.id);

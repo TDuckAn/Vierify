@@ -76,3 +76,20 @@
   opacity: 1;
   transform: none;
 }
+
+/* Respect user motion preference — also benefits PageSpeed accessibility score */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .animate-fade-in,
+  .animate-slide-in-right {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

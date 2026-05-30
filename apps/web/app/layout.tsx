@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Be_Vietnam_Pro, JetBrains_Mono } from "next/font/google";
 
 import { PwaInstallPrompt } from "../components/pwa-install-prompt";
@@ -18,11 +18,36 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ["400", "500"]
 });
 
+export const viewport: Viewport = {
+  themeColor: "#14B8A6",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5
+};
+
+const SITE_URL = "https://vierify.vn";
+const OG_DESCRIPTION =
+  "Nền tảng truy xuất nguồn gốc chuỗi cung ứng được xác thực bởi blockchain Polygon.";
+
 export const metadata: Metadata = {
-  description:
-    "Nền tảng truy xuất nguồn gốc chuỗi cung ứng được xác thực bởi blockchain Polygon.",
+  metadataBase: new URL(SITE_URL),
+  description: OG_DESCRIPTION,
   title: "Vierify — Truy xuất nguồn gốc",
   manifest: "/manifest.json",
+  robots: { index: true, follow: true },
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    siteName: "Vierify",
+    title: "Vierify — Truy xuất nguồn gốc",
+    description: OG_DESCRIPTION,
+    locale: "vi_VN"
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Vierify — Truy xuất nguồn gốc",
+    description: OG_DESCRIPTION
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
