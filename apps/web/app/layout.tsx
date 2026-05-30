@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro, JetBrains_Mono } from "next/font/google";
 
+import { PwaInstallPrompt } from "../components/pwa-install-prompt";
 import "./globals.css";
 
 const beVietnamPro = Be_Vietnam_Pro({
@@ -20,7 +21,13 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   description:
     "Nền tảng truy xuất nguồn gốc chuỗi cung ứng được xác thực bởi blockchain Polygon.",
-  title: "Vierify — Truy xuất nguồn gốc"
+  title: "Vierify — Truy xuất nguồn gốc",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Vierify"
+  }
 };
 
 export default function RootLayout({
@@ -44,6 +51,7 @@ export default function RootLayout({
       </head>
       <body className="bg-slate-50 font-sans text-slate-950 antialiased dark:bg-slate-950 dark:text-slate-50">
         {children}
+        <PwaInstallPrompt />
       </body>
     </html>
   );
