@@ -3,18 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
-// TODO(T52): replace with trpc.billing.getCurrentSubscription when billing module is implemented
-const MOCK_PLAN = {
-  tier: "free" as "free" | "basic" | "advanced" | "professional" | "enterprise",
-  batchesUsed: 18,
-  trialEndsAt: "15/06/2026",
-};
-
-const MOCK_INVOICES = [
-  { id: "i1", period: "Tháng 5/2026", amount: "99.000đ", method: "PayOS", status: "paid" as const },
-  { id: "i2", period: "Tháng 4/2026", amount: "99.000đ", method: "MoMo", status: "paid" as const },
-  { id: "i3", period: "Tháng 3/2026", amount: "99.000đ", method: "PayOS", status: "pending" as const },
-];
+import { trpc } from "../../../lib/trpc";
 
 const PLAN_CONFIG = {
   free:         { label: "Free",         batchLimit: 30 },
@@ -56,11 +45,29 @@ export default function SubscriptionPage(): React.ReactNode {
   const [showPlans, setShowPlans] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
 
-  const plan = PLAN_CONFIG[MOCK_PLAN.tier];
-  const { batchesUsed, trialEndsAt } = MOCK_PLAN;
+  const { data: subData, isPending: subPending } = trpc.billing.getCurrentSubscription.useQuery();
+  const { data: invoiceData, isPending: invoicePending } = trpc.billing.getInvoices.useQuery();
+
+  const tier = subData?.tier ?? "free";
+  const batchesUsed = subData?.batchesUsed ?? 0;
+  const trialEndsAt = subData?.trialEndsAt
+    ? new Date(subData.trialEndsAt).toLocaleDateString("vi-VN")
+    : null;
+
+  const plan = PLAN_CONFIG[tier];
   const batchLimit = plan.batchLimit;
   const usagePct = batchLimit === Infinity ? 0 : Math.round((batchesUsed / batchLimit) * 100);
-  const isFree = MOCK_PLAN.tier === "free";
+  const isFree = tier === "free";
+
+  if (subPending) {
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -87,7 +94,7 @@ export default function SubscriptionPage(): React.ReactNode {
                 <CheckIcon /> Đang hoạt động
               </span>
             </div>
-            {isFree && (
+            {isFree && trialEndsAt && (
               <p className="mt-2 text-sm text-amber-600 dark:text-amber-400">
                 ⏰ Gói Free hết hạn vào {trialEndsAt} · Nâng cấp để tiếp tục
               </p>
@@ -179,7 +186,9 @@ export default function SubscriptionPage(): React.ReactNode {
       {/* Invoice history */}
       <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">Lịch sử thanh toán</div>
-        {isFree ? (
+        {invoicePending ? (
+          <div className="h-12 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+        ) : !invoiceData || invoiceData.length === 0 ? (
           <p className="text-sm text-slate-400">Chưa có hóa đơn nào. Nâng cấp gói để bắt đầu.</p>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-800">
@@ -194,13 +203,15 @@ export default function SubscriptionPage(): React.ReactNode {
                 </tr>
               </thead>
               <tbody>
-                {MOCK_INVOICES.map((inv) => {
+                {invoiceData.map((inv) => {
                   const st = STATUS_STYLES[inv.status] ?? STATUS_STYLES.pending;
+                  const amountFormatted = new Intl.NumberFormat("vi-VN").format(inv.amountVnd) + "đ";
+                  const methodLabel = inv.method === "payos" ? "PayOS" : "MoMo";
                   return (
                     <tr key={inv.id} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
                       <td className="px-4 py-3 text-sm">{inv.period}</td>
-                      <td className="px-4 py-3 text-sm font-semibold">{inv.amount}</td>
-                      <td className="px-4 py-3 text-sm text-slate-500">{inv.method}</td>
+                      <td className="px-4 py-3 text-sm font-semibold">{amountFormatted}</td>
+                      <td className="px-4 py-3 text-sm text-slate-500">{methodLabel}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${st.className}`}>
                           {st.label}

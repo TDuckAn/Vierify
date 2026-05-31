@@ -25,6 +25,7 @@ export default function NewBatchPage(): React.ReactNode {
   const [nodeId, setNodeId] = useState("");
   const [quantity, setQuantity] = useState("");
   const [uom, setUom] = useState("kg");
+  const [expiresAt, setExpiresAt] = useState("");
   const [selectedParentIds, setSelectedParentIds] = useState<string[]>([]);
   const [parentSearch, setParentSearch] = useState("");
   const [showParentPicker, setShowParentPicker] = useState(false);
@@ -69,7 +70,8 @@ export default function NewBatchPage(): React.ReactNode {
       name,
       nodeId,
       quantity: parseFloat(quantity),
-      uom
+      uom,
+      ...(expiresAt ? { expiresAt: new Date(expiresAt).toISOString() } : {})
     });
   }
 
@@ -178,6 +180,17 @@ export default function NewBatchPage(): React.ReactNode {
             </select>
           </Field>
         </div>
+
+        {/* Expiry date */}
+        <Field label="Ngày hết hạn" hint="Tùy chọn — để trống nếu không áp dụng">
+          <input
+            type="date"
+            value={expiresAt}
+            onChange={(e) => setExpiresAt(e.target.value)}
+            min={new Date().toISOString().slice(0, 10)}
+            className={inputCls}
+          />
+        </Field>
 
         {/* Parent batch picker */}
         <div>

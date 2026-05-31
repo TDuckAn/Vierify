@@ -191,6 +191,20 @@ export default function BatchDetailClient({ id }: { id: string }): React.ReactNo
         ))}
       </div>
 
+      {batch.expiresAt && (
+        <div className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm ${
+          new Date(batch.expiresAt) < new Date()
+            ? "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-400"
+            : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400"
+        }`}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          {new Date(batch.expiresAt) < new Date() ? "Đã hết hạn: " : "Hết hạn vào: "}
+          <strong>{new Date(batch.expiresAt).toLocaleDateString("vi-VN")}</strong>
+        </div>
+      )}
+
       <Card title="GS1 Trace ID">
         <p className="font-mono text-sm text-slate-700 dark:text-slate-300">{batch.gs1TraceId}</p>
       </Card>

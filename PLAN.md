@@ -1,7 +1,7 @@
 # Vierify — Project Plan
 
 > **Week 8 / 14** | Sprint 2 ✅ complete | Sprint 3 ✅ complete | Sprint 4 🔄 in progress | Sprint 5 🔄 in progress | v1 deadline: end of Week 14
-> **CI status (2026-05-31):** ✅ green · T32–T50 shipped (committing Sprint 5 now)
+> **CI status (2026-05-31):** ✅ green · T32–T50 all shipped · Sprint 5 complete
 > **Agent note:** Codex quota restored (2026-05-31) — T40 backend + T48 billing backend assigned
 > Task legend: `☐` not started · `🔄` in progress · `✅` done · `❌` blocked
 
@@ -242,9 +242,9 @@ audit_log          id · actor_id · action · resource_id · created_at  ← ap
 
 | # | Task | Owner | Priority | Status | Notes |
 |---|---|---|---|---|---|
-| T40-ui | Expiry date field — batch create form + batch detail | Claude | P3 | ☐ | Depends on T40 schema shipped by Codex · date picker input on create form · display formatted date on detail page |
+| T40-ui | Expiry date field — batch create form + batch detail | Claude | P3 | ✅ | Optional date picker on create form (min = today) · passes `expiresAt` ISO string to `batches.create` · detail page shows amber/rose banner with formatted date (rose if expired) |
 | T49 | Playwright tests for T45–T47 | Claude | P1 | ✅ | Written by Claude (2026-05-31) · `auth-flow.spec.ts`: 20 cases — /register (logo, fields, strength meter 3 levels, mismatch error, ToS links, register/login nav), /forgot-password (logo, heading, fields, back link), /reset-password (fields, strength meter, mismatch error, short-pw error), /verify-email (success state, error state with expired token), login page Sprint 5 additions (forgot-password link, register CTA) · `onboarding.spec.ts`: 13 cases — /onboarding/plan (heading, 5 tier cards, Professional badge, Free default selection, paid tier shows PayOS/MoMo toggle, toggle switches methods, Free hides toggle, Continue navigates to /profile, step indicator labels, 375px overflow) · /onboarding/profile (heading, all 4 fields, MST validation error, valid MST clears error, 5 node-type options, is_individual reveals PII notice, submit button, step indicator) · `subscription.spec.ts`: 11 cases — auth guard (redirect to /login), authenticated: heading, plan label, active badge, trial expiry, quota bar, Nâng cấp expands cards, upgrade cards link to /onboarding/plan, invoice section, Free plan empty invoice, back link, 375px overflow, avatar menu subscription link · Fixed `b2b-dashboard.spec.ts`: updated "contact link" → "register CTA" test (login page no longer has 'Liên hệ với chúng tôi') |
-| T50 | Wire T48 billing data into T47 subscription page | Claude | P2 | ☐ | Replace `MOCK_PLAN` + `MOCK_INVOICES` with live tRPC calls once T48 ships |
+| T50 | Wire T48 billing data into T47 subscription page | Claude | P2 | ✅ | Replaced `MOCK_PLAN` + `MOCK_INVOICES` with `trpc.billing.getCurrentSubscription` + `trpc.billing.getInvoices` · skeleton loading state · amounts formatted with `Intl.NumberFormat("vi-VN")` · method enum mapped to display labels |
 
 ---
 
