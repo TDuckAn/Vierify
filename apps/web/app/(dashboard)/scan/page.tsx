@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { trpc } from "../../../lib/trpc";
+
 const GS1_REGEX = /^01[0-9]{14}10[A-Za-z0-9./-]{1,20}$/;
 
 type ScanState = "idle" | "scanning" | "denied" | "unsupported";
@@ -17,6 +19,47 @@ export default function ScanPage(): React.ReactNode {
   const [state, setState] = useState<ScanState>("idle");
   const [manualGs1, setManualGs1] = useState("");
   const [scanError, setScanError] = useState<string | null>(null);
+
+  // Damaged QR fallback modal
+  const [showFallback, setShowFallback] = useState(false);
+  const [partialId, setPartialId] = useState("");
+  const [fallbackReason, setFallbackReason] = useState("");
+  const [fallbackError, setFallbackError] = useState<string | null>(null);
+
+  const manualOverride = trpc.batches.manualOverride.useMutation({
+    onSuccess: (batch) => {
+      setShowFallback(false);
+      router.push(`/batches/${batch.id}`);
+    },
+    onError: (err) => {
+      if (err.data?.code === "NOT_FOUND") {
+        setFallbackError("Không tìm thấy lô hàng với ID này. Kiểm tra lại 6 ký tự cuối.");
+      } else if (err.data?.code === "CONFLICT") {
+        setFallbackError("Có nhiều lô hàng khớp với ID này. Hãy liên hệ quản trị viên.");
+      } else {
+        setFallbackError("Có lỗi xảy ra. Vui lòng thử lại.");
+      }
+    },
+  });
+
+  function openFallback() {
+    stopCamera();
+    setPartialId("");
+    setFallbackReason("");
+    setFallbackError(null);
+    setShowFallback(true);
+  }
+
+  function submitFallback(e: React.FormEvent) {
+    e.preventDefault();
+    setFallbackError(null);
+    manualOverride.mutate({
+      partialBatchId: partialId.trim().slice(-6),
+      reason: fallbackReason.trim(),
+      // TODO(T51): replace with Supabase Storage presigned URL after file upload is wired
+      evidenceDocUrl: `${window.location.origin}/evidence-pending`,
+    });
+  }
 
   const manualValid = GS1_REGEX.test(manualGs1.trim());
 
@@ -195,6 +238,16 @@ export default function ScanPage(): React.ReactNode {
         )}
       </div>
 
+      {/* Damaged QR fallback trigger */}
+      <div className="mb-4 text-center">
+        <button
+          onClick={openFallback}
+          className="text-xs text-slate-400 underline underline-offset-2 hover:text-chain dark:text-slate-500 dark:hover:text-chain"
+        >
+          Không quét được mã QR?
+        </button>
+      </div>
+
       {scanError && (
         <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-400">
           {scanError}
@@ -226,6 +279,81 @@ export default function ScanPage(): React.ReactNode {
           <p className="mt-1.5 text-xs text-rose-500">Định dạng GS1 không hợp lệ</p>
         )}
       </div>
+      {/* Damaged QR fallback modal */}
+      {showFallback && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setShowFallback(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="mb-1 text-base font-bold text-slate-950 dark:text-slate-50">
+              Tra cứu lô hàng thủ công
+            </h2>
+            <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
+              Nhập 6 ký tự cuối của mã lô hàng (in phía dưới mã QR).
+            </p>
+
+            <form onSubmit={submitFallback} className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  6 ký tự cuối mã lô
+                </label>
+                <input
+                  type="text"
+                  value={partialId}
+                  onChange={(e) => setPartialId(e.target.value.slice(0, 6))}
+                  placeholder="Ví dụ: 4a2f8c"
+                  maxLength={6}
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 font-mono text-sm tracking-widest outline-none transition focus:border-chain focus:ring-2 focus:ring-chain/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-50"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Lý do không quét được
+                </label>
+                <textarea
+                  value={fallbackReason}
+                  onChange={(e) => setFallbackReason(e.target.value)}
+                  placeholder="Ví dụ: Nhãn bị rách, dính ướt..."
+                  rows={2}
+                  className="w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-chain focus:ring-2 focus:ring-chain/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-50"
+                />
+              </div>
+
+              {fallbackError && (
+                <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-400">
+                  {fallbackError}
+                </p>
+              )}
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowFallback(false)}
+                  className="flex-1 rounded-full border border-slate-200 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+                >
+                  Huỷ
+                </button>
+                <button
+                  type="submit"
+                  disabled={partialId.length < 6 || !fallbackReason.trim() || manualOverride.isPending}
+                  className="flex-1 rounded-full bg-chain py-2.5 text-sm font-semibold text-white transition hover:bg-teal-600 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {manualOverride.isPending ? "Đang tìm..." : "Tra cứu"}
+                </button>
+              </div>
+            </form>
+
+            <p className="mt-3 text-center text-[10px] text-slate-400 dark:text-slate-600">
+              Sự kiện này sẽ được ghi vào nhật ký kiểm tra.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

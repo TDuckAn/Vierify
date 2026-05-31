@@ -194,15 +194,11 @@ export async function manualOverrideBatch(
 
   const batch = rows[0].batch;
 
-  await db.execute(sql`
-    INSERT INTO audit_log (action, actor_id, resource_id, metadata)
-    VALUES (
-      ${"batch.manual_override"},
-      ${actorId},
-      ${batch.id},
-      ${JSON.stringify({ reason: input.reason, evidenceDocUrl: input.evidenceDocUrl })}
-    )
-  `);
+  await db.insert(auditLog).values({
+    action: "batch.manual_override",
+    actorId,
+    resourceId: batch.id
+  });
 
   return batch;
 }
