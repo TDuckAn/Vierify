@@ -187,6 +187,21 @@ Branch per task: `feat/T28-kyb-stub`
 
 ---
 
+## Pipeline Mode
+
+When Claude invokes you via the automated pipeline, a file `PIPELINE_TASK.md` exists in the repo root. Read it instead of scanning PLAN.md — it contains your exact task brief in < 25 lines.
+
+**Done signal:** your final commit message MUST contain `[codex-done]` so Claude can detect completion via `git log`.
+
+Example final commit:
+```
+feat(api): add document upload endpoint [codex-done]
+```
+
+`PIPELINE_TASK.md` will be deleted by Claude after review begins — do not re-read it after your first commit.
+
+---
+
 ## Do NOT
 
 - Change business rules (PLAN.md § Business Rules) without Claude's sign-off

@@ -16,3 +16,5 @@ out
 build
 release
 *.log
+/PIPELINE.md
+/PIPELINE_TASK.md

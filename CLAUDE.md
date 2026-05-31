@@ -79,6 +79,28 @@ apps/web/e2e/
 
 ---
 
+## Autonomous Pipeline
+
+Start with: `/pipeline start "sprint goal"` — initialises `PIPELINE.md` and enters the loop.
+
+Each `/pipeline` turn reads only `PIPELINE.md` (< 40 lines) + minimal git/CI output. Full files are read only when directly needed for that phase. This keeps each loop iteration under ~300 lines of context.
+
+**Phase flow:** `planning → codex → review → claude → ci → [next task | done]`
+
+Codex is invoked as a background subprocess:
+```bash
+codex --approval-mode full-auto -q "$(cat PIPELINE_TASK.md)"
+```
+Completion is detected by `[codex-done]` in the git log.
+
+**Loop stops when:** all sprint tasks are `✅`, an unresolvable error occurs, or the user sends a message with "stop" or "pause".
+
+**User interrupt:** send any message mid-loop — Claude reads it at the next wakeup and decides whether to pause or continue.
+
+State file `PIPELINE.md` and ephemeral `PIPELINE_TASK.md` are gitignored — never committed.
+
+---
+
 ## Security Review Triggers
 
 Run `/security-review` skill before any sprint that touches:
