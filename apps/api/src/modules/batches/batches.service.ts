@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { getDb } from "../../db/client";
@@ -6,7 +6,8 @@ import { auditLog, supplyChainNode, traceBatch } from "../../db/schema";
 import { enqueueHashBatchJob } from "../../queues/blockchain.queue";
 import type {
   createBatchSchema,
-  listBatchesSchema
+  listBatchesSchema,
+  manualOverrideSchema
 } from "./batches.schema";
 import type { z } from "zod";
 
@@ -154,4 +155,54 @@ export async function listBatches(input: z.infer<typeof listBatchesSchema>, orgI
   }
 
   return db.select().from(traceBatch).orderBy(desc(traceBatch.createdAt)).limit(input.limit);
+}
+
+export async function manualOverrideBatch(
+  input: z.infer<typeof manualOverrideSchema>,
+  actorId: string,
+  orgId?: string
+) {
+  const db = getDb();
+  const partialIdFilter = sql`${traceBatch.id}::text ILIKE ${`%${input.partialBatchId}`}`;
+
+  const rows = orgId
+    ? await db
+        .select({ batch: traceBatch })
+        .from(traceBatch)
+        .innerJoin(supplyChainNode, eq(traceBatch.nodeId, supplyChainNode.id))
+        .where(and(partialIdFilter, eq(supplyChainNode.orgId, orgId)))
+        .limit(2)
+    : await db
+        .select({ batch: traceBatch })
+        .from(traceBatch)
+        .where(partialIdFilter)
+        .limit(2);
+
+  if (rows.length === 0) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Trace batch not found."
+    });
+  }
+
+  if (rows.length > 1) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "Partial ID matches multiple batches"
+    });
+  }
+
+  const batch = rows[0].batch;
+
+  await db.execute(sql`
+    INSERT INTO audit_log (action, actor_id, resource_id, metadata)
+    VALUES (
+      ${"batch.manual_override"},
+      ${actorId},
+      ${batch.id},
+      ${JSON.stringify({ reason: input.reason, evidenceDocUrl: input.evidenceDocUrl })}
+    )
+  `);
+
+  return batch;
 }

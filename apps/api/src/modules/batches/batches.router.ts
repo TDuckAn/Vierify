@@ -6,13 +6,15 @@ import {
   createBatchSchema,
   getBatchByTraceIdSchema,
   getBatchSchema,
-  listBatchesSchema
+  listBatchesSchema,
+  manualOverrideSchema
 } from "./batches.schema";
 import {
   createBatch,
   getBatch,
   getBatchByTraceId,
-  listBatches
+  listBatches,
+  manualOverrideBatch
 } from "./batches.service";
 
 export const batchesRouter = router({
@@ -45,5 +47,10 @@ export const batchesRouter = router({
   }),
   list: readProcedure
     .input(listBatchesSchema)
-    .query(({ ctx, input }) => listBatches(input, getTenantOrgId(ctx.user)))
+    .query(({ ctx, input }) => listBatches(input, getTenantOrgId(ctx.user))),
+  manualOverride: merchantProcedure
+    .input(manualOverrideSchema)
+    .mutation(({ ctx, input }) =>
+      manualOverrideBatch(input, ctx.user.id, getTenantOrgId(ctx.user))
+    )
 });

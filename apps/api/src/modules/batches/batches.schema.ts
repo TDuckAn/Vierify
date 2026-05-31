@@ -39,3 +39,9 @@ export const listBatchesSchema = z.object({
   limit: z.number().int().min(1).max(100).default(50),
   nodeId: z.string().uuid().optional()
 });
+
+export const manualOverrideSchema = z.object({
+  evidenceDocUrl: z.string().url(),
+  partialBatchId: z.string().trim().min(6).max(6),
+  reason: z.string().trim().min(1).max(500)
+});
