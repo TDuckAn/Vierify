@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { OnboardingHeader } from "../layout";
+import { OnboardingHeader } from "../onboarding-header";
 
 const TIERS = [
   {

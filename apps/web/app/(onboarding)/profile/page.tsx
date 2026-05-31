@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { OnboardingHeader } from "../layout";
+import { OnboardingHeader } from "../onboarding-header";
 import { trpc } from "../../../lib/trpc";
 
 const MST_REGEX = /^\d{10}(-\d{3})?$/;
