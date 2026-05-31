@@ -1,7 +1,6 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 
-export default function OnboardingLayout({ children }: { children: ReactNode }): React.ReactNode {
+export default function OnboardingLayout({ children }: { children: React.ReactNode }): React.ReactNode {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {children}
