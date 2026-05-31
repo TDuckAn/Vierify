@@ -37,8 +37,9 @@ describe("genealogy", () => {
       const node = await insertTestNode(db);
       nodeIds.push(node.id);
 
+      // child = 192, parent = 200 → loss = 4% < 5% default max → OK
       const parent = await insertTestBatch(db, node.id, { quantity: "200" });
-      const child = await insertTestBatch(db, node.id, { quantity: "180" });
+      const child = await insertTestBatch(db, node.id, { quantity: "192" });
 
       const links = await linkGenealogy(
         { childBatchId: child.id, parentBatchIds: [parent.id], wasteTolerance: 0 },
@@ -50,10 +51,11 @@ describe("genealogy", () => {
       expect(links[0]?.childBatchId).toBe(child.id);
     });
 
-    it("rejects Mass Balance violation: child > sum(parents) × (1 + tolerance)", async () => {
+    it("rejects phantom input: child exceeds total parent quantity", async () => {
       const node = await insertTestNode(db);
       nodeIds.push(node.id);
 
+      // child = 110, parent = 100 → loss = -10% < min(0%) → phantom input
       const parent = await insertTestBatch(db, node.id, { quantity: "100" });
       const child = await insertTestBatch(db, node.id, { quantity: "110" });
 
@@ -65,17 +67,17 @@ describe("genealogy", () => {
       ).rejects.toMatchObject({ code: "CONFLICT" });
     });
 
-    it("accepts child within waste tolerance", async () => {
+    it("accepts child quantity with loss within default 5% loss band", async () => {
       const node = await insertTestNode(db);
       nodeIds.push(node.id);
 
-      // child = 105, parent = 100, tolerance = 0.1 → 100 × 1.1 = 110 ≥ 105 → OK
+      // child = 96, parent = 100 → loss = 4% < 5% default max → OK
       const parent = await insertTestBatch(db, node.id, { quantity: "100" });
-      const child = await insertTestBatch(db, node.id, { quantity: "105" });
+      const child = await insertTestBatch(db, node.id, { quantity: "96" });
 
       await expect(
         linkGenealogy(
-          { childBatchId: child.id, parentBatchIds: [parent.id], wasteTolerance: 0.1 },
+          { childBatchId: child.id, parentBatchIds: [parent.id], wasteTolerance: 0 },
           TEST_ACTOR_ID
         )
       ).resolves.toHaveLength(1);
@@ -98,6 +100,7 @@ describe("genealogy", () => {
       const node = await insertTestNode(db);
       nodeIds.push(node.id);
 
+      // All equal quantity → 0% loss, within [0%, 5%] band
       const source = await insertTestBatch(db, node.id, { quantity: "100" });
       const intermediate = await insertTestBatch(db, node.id, { quantity: "100" });
       const descendant = await insertTestBatch(db, node.id, { quantity: "100" });
@@ -169,10 +172,10 @@ describe("genealogy", () => {
       const node = await insertTestNode(db);
       nodeIds.push(node.id);
 
+      // child = 114, sum(parents) = 120 → loss = 5% = max default → OK
       const p1 = await insertTestBatch(db, node.id, { quantity: "60" });
       const p2 = await insertTestBatch(db, node.id, { quantity: "60" });
-      // child = 110, sum(parents) = 120, tolerance = 0 → OK
-      const child = await insertTestBatch(db, node.id, { quantity: "110" });
+      const child = await insertTestBatch(db, node.id, { quantity: "114" });
 
       const links = await linkGenealogy(
         { childBatchId: child.id, parentBatchIds: [p1.id, p2.id], wasteTolerance: 0 },
@@ -182,47 +185,47 @@ describe("genealogy", () => {
       expect(links).toHaveLength(2);
     });
 
-    it("accepts child quantity exactly at the tolerance boundary", async () => {
+    it("accepts child quantity exactly at the 5% loss boundary", async () => {
       const node = await insertTestNode(db);
       nodeIds.push(node.id);
 
-      // child = 110, parent = 100, tolerance = 0.1 → limit = 100 × 1.1 = 110 exactly → OK
+      // child = 95, parent = 100 → loss = 5% = max default → OK
       const parent = await insertTestBatch(db, node.id, { quantity: "100" });
-      const child = await insertTestBatch(db, node.id, { quantity: "110" });
+      const child = await insertTestBatch(db, node.id, { quantity: "95" });
 
       await expect(
         linkGenealogy(
-          { childBatchId: child.id, parentBatchIds: [parent.id], wasteTolerance: 0.1 },
+          { childBatchId: child.id, parentBatchIds: [parent.id], wasteTolerance: 0 },
           TEST_ACTOR_ID
         )
       ).resolves.toHaveLength(1);
     });
 
-    it("rejects child quantity one unit above the tolerance boundary", async () => {
+    it("rejects child quantity exceeding default 5% loss maximum", async () => {
       const node = await insertTestNode(db);
       nodeIds.push(node.id);
 
-      // child = 111, parent = 100, tolerance = 0.1 → limit = 110 < 111 → CONFLICT
+      // child = 94, parent = 100 → loss = 6% > 5% max → CONFLICT
       const parent = await insertTestBatch(db, node.id, { quantity: "100" });
-      const child = await insertTestBatch(db, node.id, { quantity: "111" });
+      const child = await insertTestBatch(db, node.id, { quantity: "94" });
 
       await expect(
         linkGenealogy(
-          { childBatchId: child.id, parentBatchIds: [parent.id], wasteTolerance: 0.1 },
+          { childBatchId: child.id, parentBatchIds: [parent.id], wasteTolerance: 0 },
           TEST_ACTOR_ID
         )
       ).rejects.toMatchObject({ code: "CONFLICT" });
     });
 
-    it("applies DEFAULT_WASTE_TOLERANCE (5%) when wasteTolerance is omitted", async () => {
+    it("applies DEFAULT_WASTE_TOLERANCE constant (5%) as schema default", async () => {
       const node = await insertTestNode(db);
       nodeIds.push(node.id);
 
       expect(DEFAULT_WASTE_TOLERANCE).toBe(0.05);
 
-      // child = 104, parent = 100 → 100 × 1.05 = 105 ≥ 104 → OK
+      // child = 96, parent = 100 → loss = 4% < 5% default loss profile max → OK
       const parent = await insertTestBatch(db, node.id, { quantity: "100" });
-      const child = await insertTestBatch(db, node.id, { quantity: "104" });
+      const child = await insertTestBatch(db, node.id, { quantity: "96" });
 
       const parsed = linkGenealogySchema.parse({
         childBatchId: child.id,
@@ -239,8 +242,9 @@ describe("genealogy", () => {
       const node = await insertTestNode(db);
       nodeIds.push(node.id);
 
+      // child = 96, parent = 100 → 4% loss within default band
       const parent = await insertTestBatch(db, node.id, { quantity: "100" });
-      const child = await insertTestBatch(db, node.id, { quantity: "80" });
+      const child = await insertTestBatch(db, node.id, { quantity: "96" });
 
       await linkGenealogy(
         { childBatchId: child.id, parentBatchIds: [parent.id], wasteTolerance: 0 },
@@ -276,8 +280,9 @@ describe("genealogy", () => {
       const node = await insertTestNode(db);
       nodeIds.push(node.id);
 
+      // 4% loss — within default 5% band
       const parent = await insertTestBatch(db, node.id, { quantity: "100" });
-      const child = await insertTestBatch(db, node.id, { quantity: "80" });
+      const child = await insertTestBatch(db, node.id, { quantity: "96" });
 
       await linkGenealogy(
         { childBatchId: child.id, parentBatchIds: [parent.id], wasteTolerance: 0 },
@@ -296,7 +301,7 @@ describe("genealogy", () => {
       nodeIds.push(node.id);
 
       const parent = await insertTestBatch(db, node.id, { quantity: "100" });
-      const child = await insertTestBatch(db, node.id, { quantity: "80" });
+      const child = await insertTestBatch(db, node.id, { quantity: "96" });
 
       await linkGenealogy(
         { childBatchId: child.id, parentBatchIds: [parent.id], wasteTolerance: 0 },
@@ -314,9 +319,10 @@ describe("genealogy", () => {
       const node = await insertTestNode(db);
       nodeIds.push(node.id);
 
+      // Each step ~4% loss — within default 5% band
       const grandparent = await insertTestBatch(db, node.id, { quantity: "100" });
-      const middle = await insertTestBatch(db, node.id, { quantity: "90" });
-      const grandchild = await insertTestBatch(db, node.id, { quantity: "80" });
+      const middle = await insertTestBatch(db, node.id, { quantity: "96" });
+      const grandchild = await insertTestBatch(db, node.id, { quantity: "92" });
 
       await linkGenealogy(
         { childBatchId: middle.id, parentBatchIds: [grandparent.id], wasteTolerance: 0 },
