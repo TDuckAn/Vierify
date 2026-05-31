@@ -83,6 +83,7 @@ test.describe("Authenticated dashboard", () => {
   });
 
   test("sign out returns to /login", async ({ page }) => {
+    await page.getByRole("button", { name: "Tài khoản" }).click();
     await page.getByRole("button", { name: "Đăng xuất" }).click();
     await page.waitForURL(/\/login/);
     await expect(page).toHaveURL(/\/login/);

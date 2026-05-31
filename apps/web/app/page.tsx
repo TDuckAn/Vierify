@@ -388,7 +388,7 @@ function getTiers(lang: Lang): Tier[] {
       frequency: "Real-time",
       cta: vi ? "Chọn gói này" : "Choose plan",
       highlighted: true,
-      badge: "Best choice"
+      badge: vi ? "Lựa chọn tốt nhất" : "Best choice"
     },
     {
       id: "enterprise",

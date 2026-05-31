@@ -44,8 +44,9 @@ test.describe("Subscription page — authenticated", () => {
     await expect(page.getByText("Đang hoạt động")).toBeVisible();
   });
 
-  test("shows trial expiry message for Free plan", async ({ page }) => {
-    await expect(page.getByText(/Gói Free hết hạn vào/)).toBeVisible();
+  test("shows upgrade button for Free plan", async ({ page }) => {
+    // Free plan always shows the upgrade CTA regardless of trialEndsAt
+    await expect(page.getByRole("button", { name: "Nâng cấp gói" })).toBeVisible();
   });
 
   test("shows batch usage progress bar", async ({ page }) => {
