@@ -61,6 +61,7 @@ export default function CreateBatchScreen() {
         quantity: Number(form.quantity),
         uom: form.uom,
         gs1TraceId: form.gs1TraceId.trim(),
+        nodeId: "00000000-0000-0000-0000-000000000000", // TODO(T52): node picker
         ...(form.gpsLat && form.gpsLng
           ? { gpsLat: Number(form.gpsLat), gpsLng: Number(form.gpsLng) }
           : {})
