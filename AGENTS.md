@@ -227,91 +227,182 @@ feat(api): add document upload endpoint [codex-done]
 
 ---
 
-## Sprint 5 — Active Tasks for Codex (2026-05-31)
+## Sprint 5 — ✅ Complete (2026-05-31)
 
-Pick up **T40** and **T48** in parallel. Both are schema + API tasks only — no UI.
-
-### T40 — Batch expiry date
-
-**File:** `apps/api/src/db/schema.ts` → `traceBatch` table
-
-Add one nullable column:
-
-```typescript
-expiresAt: timestamp("expires_at", { withTimezone: true }),
-```
-
-Then run:
-
-```bash
-pnpm --filter @vierify/api drizzle-kit generate
-pnpm --filter @vierify/api drizzle-kit migrate
-```
-
-**API changes:**
-- `createBatchSchema` in `batches.schema.ts` — add `expiresAt: z.string().datetime().optional()`
-- `createBatch` service — pass `expiresAt` through to insert
-- All batch read responses (getBatch, listBatches) — include `expiresAt` in the returned object
-
-No business rules on null. No breaking changes to existing tests.
+T40 (batch expiry date) and T48 (billing backend) shipped. Sprint 5 is done.
 
 ---
 
-### T48 — Billing/subscription backend
+## Sprint 6 — Active Tasks for Codex (2026-06-01)
 
-**New module:** `apps/api/src/modules/billing/`
+Pick up **T51**, **T52**, **T53** in sequence. All three are schema + API tasks. Claude handles all UI.
 
-Create `billing.router.ts`, `billing.service.ts`, `billing.schema.ts` following the standard 3-file pattern.
+---
 
-**Schema additions** in `apps/api/src/db/schema.ts`:
+### T51 — Damaged QR Fallback
+
+**New tRPC mutation:** `batches.manualOverride`
+
+Add to `apps/api/src/modules/batches/batches.router.ts`:
 
 ```typescript
-export const subscriptionTierEnum = pgEnum("subscription_tier", [
-  "free", "basic", "advanced", "professional", "enterprise"
-]);
+manualOverride: merchantProcedure
+  .input(z.object({
+    partialBatchId: z.string().min(6).max(6),  // last 6 chars of batch ID
+    evidenceDocUrl: z.string().url(),           // Supabase Storage URL of photo
+    reason: z.string().min(1).max(500),
+  }))
+  .mutation(async ({ ctx, input }) => {
+    return manualOverrideBatch(input, ctx.user.id, getTenantOrgId(ctx.user));
+  })
+```
 
-export const subscriptions = pgTable("subscriptions", {
+**Service** `batches.service.ts` — add `manualOverrideBatch`:
+- Find `trace_batch` WHERE `id ILIKE '%' || partialBatchId` AND matches org (via `node.org_id`)
+- If 0 results: throw `TRPCError({ code: "NOT_FOUND" })`
+- If 2+ results: throw `TRPCError({ code: "CONFLICT", message: "Partial ID matches multiple batches" })`
+- Exactly 1 result: write `audit_log` entry `{ action: 'batch.manual_override', resource_id: batch.id, actor_id: userId, metadata: JSON.stringify({ reason, evidenceDocUrl }) }`
+- Return the matched batch record
+
+No schema changes. No new table. No migration needed.
+
+---
+
+### T52 — Loss Profile Engine
+
+**New module:** `apps/api/src/modules/loss-profiles/`
+
+Create `loss-profiles.router.ts`, `loss-profiles.service.ts`, `loss-profiles.schema.ts`.
+
+**Schema addition** in `apps/api/src/db/schema.ts`:
+
+```typescript
+export const lossProfile = pgTable("loss_profile", {
   id: uuid("id").defaultRandom().primaryKey(),
   orgId: uuid("org_id").notNull().references(() => supplyChainNode.id),
-  tier: subscriptionTierEnum("tier").notNull().default("free"),
-  trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
-  startedAt: timestamp("started_at", { withTimezone: true }).defaultNow(),
-});
-
-export const invoiceStatusEnum = pgEnum("invoice_status", ["paid", "pending", "failed"]);
-export const paymentMethodEnum = pgEnum("payment_method", ["payos", "momo"]);
-
-export const invoices = pgTable("invoices", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  orgId: uuid("org_id").notNull().references(() => supplyChainNode.id),
-  period: text("period").notNull(),       // e.g. "Tháng 5/2026"
-  amountVnd: integer("amount_vnd").notNull(),
-  method: paymentMethodEnum("method").notNull(),
-  status: invoiceStatusEnum("status").notNull().default("pending"),
+  productType: text("product_type").notNull(),
+  processStep: text("process_step").notNull(),
+  minLossPct: numeric("min_loss_pct", { precision: 5, scale: 2 }).notNull(), // e.g. 3.00 = 3%
+  maxLossPct: numeric("max_loss_pct", { precision: 5, scale: 2 }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+}, (t) => ({
+  orgProductStepUniq: unique().on(t.orgId, t.productType, t.processStep),
+}));
+```
+
+**Zod schema** (`loss-profiles.schema.ts`):
+```typescript
+export const createLossProfileSchema = z.object({
+  productType: z.string().min(1).max(100),
+  processStep: z.string().min(1).max(100),
+  minLossPct: z.number().min(0).max(100),
+  maxLossPct: z.number().min(0).max(100),
+}).refine(d => d.minLossPct <= d.maxLossPct, { message: "min must be ≤ max" });
+```
+
+**tRPC procedures** (`loss-profiles.router.ts`):
+```typescript
+export const lossProfilesRouter = router({
+  list:   adminProcedure.query(({ ctx }) => listLossProfiles(getTenantOrgId(ctx.user))),
+  create: adminProcedure.input(createLossProfileSchema).mutation(({ ctx, input }) =>
+    createLossProfile(input, getTenantOrgId(ctx.user)!)),
+  update: adminProcedure.input(updateLossProfileSchema).mutation(({ ctx, input }) =>
+    updateLossProfile(input, getTenantOrgId(ctx.user)!)),
+  delete: adminProcedure.input(z.object({ id: z.string().uuid() })).mutation(({ ctx, input }) =>
+    deleteLossProfile(input.id, getTenantOrgId(ctx.user)!)),
 });
 ```
 
-**tRPC procedures:**
+Wire as `lossProfiles: lossProfilesRouter` in root router.
+
+**Update mass balance validation** in `batches.service.ts` / `genealogy.service.ts`:
+
+Replace the current single-threshold check with:
 
 ```typescript
-// billing.router.ts
-export const billingRouter = router({
-  getCurrentSubscription: readProcedure.query(async ({ ctx }) => {
-    // Returns { tier, trialEndsAt, batchesUsedThisMonth }
-    // batchesUsedThisMonth = count of trace_batch rows for this org created in current calendar month
-    // If no subscription row exists yet, return { tier: "free", trialEndsAt: null, batchesUsedThisMonth: 0 }
-    const orgId = getTenantOrgId(ctx.user);
-    return getCurrentSubscription(orgId);
-  }),
+async function getLossThreshold(orgId: string, productType?: string, processStep?: string) {
+  if (productType && processStep) {
+    const profile = await db.select().from(lossProfile)
+      .where(and(eq(lossProfile.orgId, orgId), eq(lossProfile.productType, productType), eq(lossProfile.processStep, processStep)))
+      .limit(1);
+    if (profile[0]) return { min: Number(profile[0].minLossPct) / 100, max: Number(profile[0].maxLossPct) / 100 };
+  }
+  return { min: 0, max: DEFAULT_WASTE_TOLERANCE }; // fallback 5%
+}
 
-  getInvoices: readProcedure.query(async ({ ctx }) => {
-    const orgId = getTenantOrgId(ctx.user);
-    return getInvoices(orgId);
-  }),
-});
+// In mass balance check:
+const { min, max } = await getLossThreshold(orgId, input.productType, input.processStep);
+const actualLoss = (totalInputQty - outputQty) / totalInputQty;
+if (actualLoss < min) throw new TRPCError({ code: "CONFLICT", message: "Loss below minimum — possible phantom input batch" });
+if (actualLoss > max) throw new TRPCError({ code: "CONFLICT", message: `Loss ${(actualLoss*100).toFixed(1)}% exceeds profile maximum ${(max*100).toFixed(1)}%` });
 ```
 
-Wire into root router as `billing: billingRouter`.
+`productType` and `processStep` are new optional fields on `createBatchSchema` and the genealogy mapping input.
 
-No payment gateway calls — stubs only. No external HTTP requests. `batchesUsedThisMonth` is a COUNT query against `trace_batch` filtered by `org_id` + `created_at >= start of current month`.
+Migration: generate + commit alongside schema change.
+
+---
+
+### T53 — Trace-Forward Recall Mode
+
+**New tRPC query:** `batches.traceForward`
+
+Add to `batches.router.ts`:
+
+```typescript
+traceForward: readProcedure
+  .input(z.object({ batchId: z.string().uuid() }))
+  .query(({ ctx, input }) => traceForwardBatch(input.batchId, getTenantOrgId(ctx.user)))
+```
+
+**Service** — add `traceForwardBatch`:
+
+```typescript
+export async function traceForwardBatch(batchId: string, orgId?: string) {
+  const visited = new Set<string>();
+  const result: TraceNode[] = [];
+  const queue = [batchId];
+  let hop = 0;
+
+  while (queue.length > 0 && hop < 10) {
+    const current = queue.shift()!;
+    if (visited.has(current)) continue;
+    visited.add(current);
+
+    // Find all children
+    const children = await db.select({ childBatchId: batchGenealogy.childBatchId })
+      .from(batchGenealogy)
+      .where(eq(batchGenealogy.parentBatchId, current));
+
+    for (const { childBatchId } of children) {
+      const batch = await db.select({
+        id: traceBatch.id, name: traceBatch.name, gs1TraceId: traceBatch.gs1TraceId,
+        nodeId: traceBatch.nodeId, bcStatus: traceBatch.bcStatus, scanCount: traceBatch.scanCount,
+      }).from(traceBatch).where(eq(traceBatch.id, childBatchId)).limit(1);
+
+      if (batch[0]) {
+        // org scope: only include batches belonging to caller's org chain (skip for admin)
+        result.push({ ...batch[0], hop });
+        queue.push(childBatchId);
+      }
+    }
+    hop++;
+  }
+  return result;
+}
+```
+
+Also add stub `batches.notifyRecall`:
+```typescript
+notifyRecall: merchantProcedure
+  .input(z.object({ batchIds: z.array(z.string().uuid()) }))
+  .mutation(async ({ ctx, input }) => {
+    // Stub: write audit_log entry for each batchId, return count
+    for (const id of input.batchIds) {
+      await writeAuditLog({ action: 'batch.recall_notified', resource_id: id, actor_id: ctx.user.id });
+    }
+    return { notified: input.batchIds.length };
+  })
+```
+
+No new schema. No migration. No external HTTP calls.

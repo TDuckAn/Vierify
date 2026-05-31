@@ -1,8 +1,8 @@
 # Vierify — Project Plan
 
-> **Week 8 / 14** | Sprint 2 ✅ complete | Sprint 3 ✅ complete | Sprint 4 🔄 in progress | Sprint 5 🔄 in progress | v1 deadline: end of Week 14
-> **CI status (2026-05-31):** ✅ green · T32–T50 all shipped · Sprint 5 complete
-> **Agent note:** Codex quota restored (2026-05-31) — T40 backend + T48 billing backend assigned
+> **Week 8 / 14** | Sprint 2 ✅ · Sprint 3 ✅ · Sprint 4 ✅ · Sprint 5 ✅ · Sprint 6 ☐ · Sprint 7 ☐ | v1 deadline: end of Week 14
+> **CI status (2026-06-01):** ✅ green · T32–T50 all shipped · Sprint 5 complete
+> **Next:** Sprint 6 (T51–T53, T56) — operational adoption gaps from Plant Manager analysis
 > Task legend: `☐` not started · `🔄` in progress · `✅` done · `❌` blocked
 
 ---
@@ -99,7 +99,9 @@ vierify/
 supply_chain_node  id · org_id · name · is_individual · tax_code · node_type · kyb_status · node_address
 trace_batch        id · gs1_trace_id · name · quantity · uom · gps_lat · gps_lng
                    pin_hash · scan_count · node_id · doc_hash · bc_status(0=pending,1=confirmed) · tx_hash · version
+                   expires_at (T40) · batch_status(active/quarantined/voided/released) (T54) · split_from_batch_id FK self (T54)
 batch_genealogy    id · parent_batch_id · child_batch_id · mapping_date · verifier_id
+loss_profile       id · org_id · product_type · process_step · min_loss_pct · max_loss_pct  (T52)
 audit_log          id · actor_id · action · resource_id · created_at  ← append-only, never delete
 ```
 
@@ -109,7 +111,7 @@ audit_log          id · actor_id · action · resource_id · created_at  ← ap
 
 | Rule | Implementation |
 |---|---|
-| Mass Balance | Reject with HTTP 409 if `output_qty > sum(input_qty) × (1 + waste_tolerance)` |
+| Mass Balance | Reject with HTTP 409 if actual loss falls outside the `loss_profile` band for `(product_type, process_step, org_id)`. Falls back to `DEFAULT_WASTE_TOLERANCE=0.05` if no profile configured. Loss below `min_loss_pct` (phantom input) and loss above `max_loss_pct` both trigger 409. (T52) |
 | GS1 ID format | `gs1_trace_id` must follow TCVN 13274:2020 structure (GTIN + Batch), not plain UUID |
 | Blockchain writes | ASYNC only — API never awaits Polygon. Hash must exclude all PII fields. |
 | PII anonymisation | Nodes with `is_individual=true`: mask name + address in all B2C API responses |
@@ -248,6 +250,32 @@ audit_log          id · actor_id · action · resource_id · created_at  ← ap
 
 ---
 
+### Sprint 6 — Week 9–11 (Operational Adoption Gaps)
+
+> Source: Plant Manager Field Analysis (Vierify_PlantManager_Analysis.md).
+> These four tasks close the gaps that would cause a real Tier-2 food-processing plant to bypass the system.
+> T51–T53 require Codex (API/schema) + Claude (UI). T56 is Claude-only.
+
+| # | Task | Owner | Priority | Status | Acceptance criteria |
+|---|---|---|---|---|---|
+| T51 | Damaged QR Fallback — manual batch ID lookup + photo evidence + supervisor push notification | Codex + Claude | P0 | ☐ | **Codex:** `batches.manualOverride` tRPC `merchantProcedure` mutation — input: `{ batchId: string, evidenceDocUrl: string, reason: string }` · validates batch exists for org · writes `audit_log` entry `batch.manual_override` with `actor_id`, `batchId`, `reason`, `evidenceDocUrl`, GPS timestamp · returns batch record · **Claude:** In `/scan` page: "Không quét được mã?" button below scanner frame → overlay modal → type last-6 batch ID characters → system resolves full batch ID → upload photo of damaged label (Supabase Storage presigned URL) → confirm → audit event visible in batch detail page · Playwright test: modal opens, lookup works on valid partial ID, upload field present |
+| T52 | Loss Profile Engine — per-(product_type × process_step) yield bands; replaces global `DEFAULT_WASTE_TOLERANCE` | Codex + Claude | P0 | ☐ | **Codex:** New table `loss_profile` (`id`, `product_type text`, `process_step text`, `min_loss_pct numeric`, `max_loss_pct numeric`, `org_id uuid refs supply_chain_node`) · `adminProcedure` CRUD endpoints (`lossProfile.list`, `lossProfile.create`, `lossProfile.update`, `lossProfile.delete`) · Update mass balance validator: look up matching `loss_profile` row by `(product_type, process_step, org_id)`; if found use its band; if not found fall back to `DEFAULT_WASTE_TOLERANCE=0.05` · Loss below `min_loss_pct` → HTTP 409 flag (possible phantom input) · Loss above `max_loss_pct` → HTTP 409 flag (exceeds profile) · **Claude:** Admin UI at `/dashboard/admin/loss-profiles` — table of profiles + add/edit/delete form with product_type text input, process_step text input, min/max % inputs · Vitest: profile lookup happy path, fallback when no profile, phantom-input flag, max-loss flag |
+| T53 | Trace-Forward Recall Mode — B2B admin panel to find all downstream batches from a source | Codex + Claude | P1 | ☐ | **Codex:** `batches.traceForward` tRPC `readProcedure` query — input: `{ batchId: string }` · BFS through `batch_genealogy` following `child_batch_id` links (max 10 hops, cycle-safe) · returns array of `{ batchId, gsTraceId, name, nodeId, nodeName, dispatchedAt, bcStatus, scanCount }` ordered by hop depth · org-scoped: only returns nodes within caller's org chain (or all for admin) · **Claude:** `/dashboard/recall` page — heading "Truy xuất xuôi (Recall Mode)" · batch QR input or ID search field · "Tìm kiếm" button · results rendered as collapsible tree (each row: batch name, GS1 ID, custody status chip, node name, dispatch date) · "Xuất CSV" button (client-side CSV from result data) · one-tap "Gửi cảnh báo" button triggers `trpc.batches.notifyRecall(batchIds[])` stub → writes audit_log · Playwright test: page loads, search field present, empty-state shown on no match |
+| T56 | FIFO Processing Nudge — sort batch selection by days-to-expiry; show nudge when older batch exists | Claude | P3 | ☐ | In the "Chọn lô hàng cha" batch selector on the create-batch form and genealogy mapping modal: sort available batches by `expiresAt` ascending (nulls last) · if the top result has `expiresAt ≤ today+3 days` show amber banner: "Lô [name] còn [N] ngày · Nên xử lý trước" · Playwright test: batch with nearest expiry appears first in list |
+
+---
+
+### Sprint 7 — Week 12–13 (Data Integrity Edge Cases)
+
+> Complex schema changes that affect genealogy chain integrity. Ship before v1 but after Sprint 6 is green.
+
+| # | Task | Owner | Priority | Status | Acceptance criteria |
+|---|---|---|---|---|---|
+| T54 | Partial Batch Split + Quarantine — QC gate splits a received batch into accepted + quarantined sub-batches | Codex + Claude | P1 | ☐ | **Codex:** Add `batch_status` enum `('active', 'quarantined', 'voided', 'released')` to `trace_batch` · Add `split_from_batch_id uuid NULL` FK to `trace_batch` (self-referential) · `batches.split` mutation: input `{ batchId, acceptedQty, quarantinedQty, reason }` — creates 2 child rows (same GS1 prefix + `-A`/`-Q` suffix), each with `split_from_batch_id` pointing to original · quarantined batch: `batch_status='quarantined'` · mass balance validator rejects `quarantined` batches as mapping inputs until explicitly released · `batches.releaseQuarantine(batchId, supervisorNote)` mutation — changes status to `released` + audit_log · **Claude:** "Tách lô" button on batch detail page (receiving dock view) → split form with weight fields + reason code dropdown (PSE defect / Temperature excursion / Foreign contamination / Other) · quarantined sub-batch shows amber "Đang kiểm tra" badge in batch list · Playwright: split creates 2 sub-batches, quarantined batch is blocked from mapping |
+| T55 | Rework Event Workflow — void batch + quota release + QR invalidation + replacement batch | Codex + Claude | P1 | ☐ | **Codex:** `batches.void` mutation: input `{ batchId, reason, supervisorSignature }` · sets `batch_status='voided'` · computes sum of `quantity` for voided batch · subtracts from parent batch "consumed quota" so remapping is possible · writes `audit_log` with `batch.void` action, reason, supervisor ID · `GET /trace/[gs1]` (B2C page data): if `batch_status='voided'` return `{ voided: true }` so page renders "Sản phẩm này đã bị thu hồi / tái chế — liên hệ nhà bán lẻ" instead of normal timeline · replacement batch uses existing `batches.create` flow; genealogy notation: after create, link original void event ID in `batch.metadata` JSON field (or new `batch_notes` text col) · **Claude:** "Hủy lô & Tái chế" button on batch detail (only for `bc_status=0` — not yet confirmed on chain) → confirmation modal with reason code + supervisor digital sig (password re-entry) · void batch shows red "Đã hủy" badge · Playwright: void flow changes badge, remapping of parent weight succeeds after void |
+
+---
+
 ### v1 Launch — Week 14
 - Migrate Polygon Amoy → PoS Mainnet
 - Web app live on Vercel (custom domain)
@@ -255,6 +283,18 @@ audit_log          id · actor_id · action · resource_id · created_at  ← ap
 - 50 B2B partner onboarding pipeline ready
 - Monitoring: Sentry alerts + uptime checks
 - Runbook documented
+
+---
+
+## Sprint 6 Risk Register
+
+| Risk | Impact | Mitigation |
+|---|---|---|
+| Loss Profile Engine requires per-org admin setup before mass balance is meaningful | New orgs get global fallback tolerance (5%) which may be too tight or too loose | Document in onboarding flow that admin must configure loss profiles for their product types; show nudge banner on dashboard if `loss_profile` table is empty for org |
+| Trace-Forward BFS on deep genealogy chains (10+ hops) causes slow queries | Recall Mode page timeout on large chains | Cap BFS at 10 hops; add `batch_genealogy(parent_batch_id, child_batch_id)` index in T52 migration; test with synthetic 50-node chain |
+| T54 Batch Split introduces `split_from_batch_id` self-referential FK — Drizzle migration ordering sensitive | Migration fails if FK references same table before table exists | Use deferred FK constraint (`deferrable initially deferred`) in migration; Codex must test `drizzle-kit generate` + `migrate` locally before pushing |
+| T55 Rework quota release changes parent batch consumed weight — mass balance recalculation must be deterministic | Floating-point rounding causes batch to become "over-mapped" after void + remap | Use integer arithmetic for all weight fields (store grams not kg); add Vitest boundary case: void 499.5 kg, remap 499 kg, expect PASS |
+| Voided batch QR still physically exists on product — delayed invalidation window | Consumer scans old sticker before B2C cache refreshes | Set `Cache-Control: no-store` on `/trace/[gs1]` for voided batches; B2C data layer checks `batch_status` on every request |
 
 ---
 
