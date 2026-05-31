@@ -40,7 +40,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   const isBatches = pathname === "/dashboard" || pathname.startsWith("/batches");
-  const isScan = pathname === "/dashboard/scan" || pathname === "/scan";
+  const isScan = pathname === "/scan";
 
   return (
     <TRPCProvider>
@@ -63,7 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   Lô hàng
                 </Link>
                 <Link
-                  href="/dashboard/scan"
+                  href="/scan"
                   className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${isScan ? "bg-chain/10 text-chain dark:bg-chain/20" : "text-slate-500 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-50"}`}
                 >
                   Quét mã
@@ -89,7 +89,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
             Lô hàng
           </Link>
-          <Link href="/dashboard/scan" className={`flex flex-col items-center gap-1 px-6 py-3 text-xs font-semibold ${isScan ? "text-chain" : "text-slate-400"}`}>
+          <Link href="/scan" className={`flex flex-col items-center gap-1 px-6 py-3 text-xs font-semibold ${isScan ? "text-chain" : "text-slate-400"}`}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>
             Quét mã
           </Link>
