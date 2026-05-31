@@ -47,3 +47,11 @@ export const manualOverrideSchema = z.object({
   partialBatchId: z.string().trim().min(6).max(6),
   reason: z.string().trim().min(1).max(500)
 });
+
+export const traceForwardSchema = z.object({
+  batchId: z.string().uuid()
+});
+
+export const notifyRecallSchema = z.object({
+  batchIds: z.array(z.string().uuid()).min(1)
+});

@@ -2,7 +2,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { getDb } from "../../db/client";
-import { auditLog, supplyChainNode, traceBatch } from "../../db/schema";
+import { auditLog, batchGenealogy, supplyChainNode, traceBatch } from "../../db/schema";
 import { enqueueHashBatchJob } from "../../queues/blockchain.queue";
 import type {
   createBatchSchema,
@@ -12,6 +12,12 @@ import type {
 import type { z } from "zod";
 
 type NodeProjection = typeof supplyChainNode.$inferSelect;
+type TraceForwardNode = Pick<
+  typeof traceBatch.$inferSelect,
+  "id" | "name" | "gs1TraceId" | "nodeId" | "bcStatus" | "scanCount"
+> & {
+  hop: number;
+};
 
 function anonymiseNode(node: NodeProjection): NodeProjection {
   if (!node.isIndividual) {
@@ -201,4 +207,81 @@ export async function manualOverrideBatch(
   });
 
   return batch;
+}
+
+export async function traceForwardBatch(batchId: string, orgId?: string): Promise<TraceForwardNode[]> {
+  const db = getDb();
+  const visited = new Set<string>([batchId]);
+  const result: TraceForwardNode[] = [];
+  const queue: Array<{ batchId: string; hop: number }> = [{ batchId, hop: 0 }];
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+
+    if (!current || current.hop >= 10) {
+      continue;
+    }
+
+    const childLinks = await db
+      .select({ childBatchId: batchGenealogy.childBatchId })
+      .from(batchGenealogy)
+      .where(eq(batchGenealogy.parentBatchId, current.batchId));
+
+    for (const { childBatchId } of childLinks) {
+      if (visited.has(childBatchId)) {
+        continue;
+      }
+
+      visited.add(childBatchId);
+      const childHop = current.hop + 1;
+      queue.push({ batchId: childBatchId, hop: childHop });
+
+      const rows = orgId
+        ? await db
+            .select({
+              bcStatus: traceBatch.bcStatus,
+              gs1TraceId: traceBatch.gs1TraceId,
+              id: traceBatch.id,
+              name: traceBatch.name,
+              nodeId: traceBatch.nodeId,
+              scanCount: traceBatch.scanCount
+            })
+            .from(traceBatch)
+            .innerJoin(supplyChainNode, eq(traceBatch.nodeId, supplyChainNode.id))
+            .where(and(eq(traceBatch.id, childBatchId), eq(supplyChainNode.orgId, orgId)))
+            .limit(1)
+        : await db
+            .select({
+              bcStatus: traceBatch.bcStatus,
+              gs1TraceId: traceBatch.gs1TraceId,
+              id: traceBatch.id,
+              name: traceBatch.name,
+              nodeId: traceBatch.nodeId,
+              scanCount: traceBatch.scanCount
+            })
+            .from(traceBatch)
+            .where(eq(traceBatch.id, childBatchId))
+            .limit(1);
+
+      if (rows[0]) {
+        result.push({ ...rows[0], hop: childHop });
+      }
+    }
+  }
+
+  return result;
+}
+
+export async function notifyRecall(batchIds: string[], actorId: string) {
+  const db = getDb();
+
+  await db.insert(auditLog).values(
+    batchIds.map((batchId) => ({
+      action: "batch.recall_notified",
+      actorId,
+      resourceId: batchId
+    }))
+  );
+
+  return { notified: batchIds.length };
 }

@@ -7,14 +7,18 @@ import {
   getBatchByTraceIdSchema,
   getBatchSchema,
   listBatchesSchema,
-  manualOverrideSchema
+  manualOverrideSchema,
+  notifyRecallSchema,
+  traceForwardSchema
 } from "./batches.schema";
 import {
   createBatch,
   getBatch,
   getBatchByTraceId,
   listBatches,
-  manualOverrideBatch
+  manualOverrideBatch,
+  notifyRecall,
+  traceForwardBatch
 } from "./batches.service";
 
 export const batchesRouter = router({
@@ -52,5 +56,11 @@ export const batchesRouter = router({
     .input(manualOverrideSchema)
     .mutation(({ ctx, input }) =>
       manualOverrideBatch(input, ctx.user.id, getTenantOrgId(ctx.user))
-    )
+    ),
+  traceForward: readProcedure
+    .input(traceForwardSchema)
+    .query(({ ctx, input }) => traceForwardBatch(input.batchId, getTenantOrgId(ctx.user))),
+  notifyRecall: merchantProcedure
+    .input(notifyRecallSchema)
+    .mutation(({ ctx, input }) => notifyRecall(input.batchIds, ctx.user.id))
 });
