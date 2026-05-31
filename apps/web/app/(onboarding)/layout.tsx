@@ -9,7 +9,7 @@ export default function OnboardingLayout({ children }: { children: ReactNode }):
   );
 }
 
-export function OnboardingHeader({ step }: { step: 1 | 2 }) {
+export function OnboardingHeader({ step }: { step: 1 | 2 }): React.ReactNode {
   const steps = [
     { n: 1, label: "Chọn gói" },
     { n: 2, label: "Hồ sơ" },
