@@ -10,6 +10,7 @@ let isFlushing = false;
 
 export type OfflineBatchCreateInput = {
   docHash?: string;
+  expiresAt?: Date;
   gpsLat?: number;
   gpsLng?: number;
   gs1TraceId: string;
