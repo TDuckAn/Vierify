@@ -175,7 +175,7 @@ test.describe("QR scanner page", () => {
   test.beforeEach(async ({ page }) => {
     await loginAsMerchant(page);
     await page.getByRole("link", { name: "Quét mã" }).click();
-    await page.waitForURL("/scan");
+    await page.waitForURL("/dashboard/scan");
   });
 
   test("renders scan page heading", async ({ page }) => {
@@ -200,7 +200,7 @@ test.describe("QR scanner page", () => {
     await expect(page.getByRole("button", { name: "Tra cứu" })).toBeEnabled();
   });
 
-  test("/scan is accessible via nav link 'Quét mã'", async ({ page }) => {
-    await expect(page).toHaveURL("/scan");
+  test("/dashboard/scan is accessible via nav link 'Quét mã'", async ({ page }) => {
+    await expect(page).toHaveURL("/dashboard/scan");
   });
 });
