@@ -10,7 +10,8 @@
 **Testing** → Write Vitest integration tests + Playwright E2E tests after Codex implements each feature
 **CI/CD config** → Write and own GitHub Actions workflows (`.github/workflows/`) — no round-trip to Codex needed
 **Review** → Review Codex diffs for correctness, security, business rule compliance
-**UI / Claude Design** → Implement all frontend UI: Next.js web (marketing, B2C timeline, B2B merchant dashboard) + Expo mobile (all screens). Follow `CLAUDE_DESIGN_BRIEF.md` for design tokens, components, and constraints.
+**UI layer** → Implement markup, Tailwind classes, design tokens, component structure for all Next.js web pages. Does NOT include React business logic inside components — state machines, form validation thresholds, event handlers, tRPC mutation wiring — those go to Codex.
+**E2E triage** → When tests fail: fix UI/structural issues (wrong URL, selector mismatch, wrong text label, mobile visibility). If failure reveals a logic bug in a component, write a Codex task rather than fixing the logic yourself. Use `/e2e-fix` to auto-fetch CI logs.
 
 ---
 

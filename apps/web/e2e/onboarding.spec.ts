@@ -57,8 +57,9 @@ test.describe("/onboarding/plan page", () => {
   });
 
   test("onboarding step indicator shows 'Chọn gói' step active", async ({ page }) => {
-    await expect(page.getByText("Chọn gói")).toBeVisible();
-    await expect(page.getByText("Hồ sơ")).toBeVisible();
+    // exact: true avoids substring matches (heading, buttons); toBeAttached works on mobile where labels are hidden (sm:block)
+    await expect(page.getByText("Chọn gói", { exact: true }).first()).toBeAttached();
+    await expect(page.getByText("Hồ sơ", { exact: true }).first()).toBeAttached();
   });
 
   test("no horizontal overflow on 375px mobile", async ({ page }) => {
@@ -120,7 +121,7 @@ test.describe("/onboarding/profile page", () => {
   });
 
   test("onboarding step indicator shows 'Hồ sơ' step active", async ({ page }) => {
-    await expect(page.getByText("Chọn gói")).toBeVisible();
-    await expect(page.getByText("Hồ sơ")).toBeVisible();
+    await expect(page.getByText("Chọn gói", { exact: true }).first()).toBeAttached();
+    await expect(page.getByText("Hồ sơ", { exact: true }).first()).toBeAttached();
   });
 });

@@ -8,8 +8,8 @@
 
 Implement tasks listed in `PLAN.md → Current Sprint`. Mark tasks `🔄` when starting, `✅` when done (after CI passes). Never self-approve as ✅ if Claude's tests are failing.
 
-**What I implement:** API routes, schema migrations, BullMQ workers, Supabase policies.
-**What I do NOT touch:** `apps/web/`, `apps/mobile/` UI files, Playwright tests, Vitest tests, CI workflows — those belong to Claude.
+**What I implement:** API routes, schema migrations, BullMQ workers, Supabase policies, **and frontend React logic** — state machines, form validation rules and thresholds, event handlers, tRPC mutation wiring inside components, conditional rendering driven by data. Claude writes component markup/structure; Codex fills in the logic.
+**What I do NOT touch:** HTML/JSX markup structure, Tailwind classes, Playwright tests, Vitest tests, CI workflows — those belong to Claude.
 
 ---
 
