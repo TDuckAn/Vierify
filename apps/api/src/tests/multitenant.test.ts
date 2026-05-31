@@ -135,7 +135,7 @@ describe("multi-tenant organization scope", () => {
     nodeIds.push(tenantNode.id, otherNode.id);
 
     const parentBatch = await insertTestBatch(db, otherNode.id, { quantity: "100" });
-    const childBatch = await insertTestBatch(db, otherNode.id, { quantity: "50" });
+    const childBatch = await insertTestBatch(db, otherNode.id, { quantity: "96" });
 
     await linkGenealogy(
       {
