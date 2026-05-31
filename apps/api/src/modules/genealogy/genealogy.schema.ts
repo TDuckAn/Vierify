@@ -11,6 +11,8 @@ export const linkGenealogySchema = z.object({
     .refine((ids) => new Set(ids).size === ids.length, {
       message: "Parent batch IDs must be unique."
     }),
+  processStep: z.string().trim().min(1).max(100).optional(),
+  productType: z.string().trim().min(1).max(100).optional(),
   wasteTolerance: z.number().min(0).max(1).default(DEFAULT_WASTE_TOLERANCE)
 });
 

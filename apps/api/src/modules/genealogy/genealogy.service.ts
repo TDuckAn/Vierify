@@ -1,8 +1,15 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { getDb } from "../../db/client";
-import { auditLog, batchGenealogy, supplyChainNode, traceBatch } from "../../db/schema";
+import {
+  auditLog,
+  batchGenealogy,
+  lossProfile,
+  supplyChainNode,
+  traceBatch
+} from "../../db/schema";
+import { DEFAULT_WASTE_TOLERANCE } from "./genealogy.schema";
 import type { linkGenealogySchema } from "./genealogy.schema";
 import type { z } from "zod";
 
@@ -72,6 +79,40 @@ async function getBatchOrgRows(batchIds: string[]) {
     .where(inArray(traceBatch.id, batchIds));
 }
 
+async function getLossThreshold(
+  orgId: string,
+  productType?: string,
+  processStep?: string
+) {
+  const db = getDb();
+
+  if (productType && processStep) {
+    const [profile] = await db
+      .select()
+      .from(lossProfile)
+      .where(
+        and(
+          eq(lossProfile.orgId, orgId),
+          eq(lossProfile.productType, productType),
+          eq(lossProfile.processStep, processStep)
+        )
+      )
+      .limit(1);
+
+    if (profile) {
+      return {
+        max: Number(profile.maxLossPct) / 100,
+        min: Number(profile.minLossPct) / 100
+      };
+    }
+  }
+
+  return {
+    max: DEFAULT_WASTE_TOLERANCE,
+    min: 0
+  };
+}
+
 export async function linkGenealogy(
   input: z.infer<typeof linkGenealogySchema>,
   actorId: string,
@@ -121,6 +162,7 @@ export async function linkGenealogy(
     ...input.parentBatchIds
   ]);
   const linkedOrgIds = new Set(batchOrgRows.map((row) => row.orgId));
+  const linkedOrgId = batchOrgRows[0]?.orgId;
 
   if (linkedOrgIds.size > 1) {
     throw new TRPCError({
@@ -136,16 +178,38 @@ export async function linkGenealogy(
     });
   }
 
+  if (!linkedOrgId) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Batch organization not found."
+    });
+  }
+
   const childQuantity = parseQuantity(childBatch.quantity);
   const parentQuantity = parentBatches.reduce(
     (sum, batch) => sum + parseQuantity(batch.quantity),
     0
   );
+  const { max, min } = await getLossThreshold(
+    linkedOrgId,
+    input.productType,
+    input.processStep
+  );
+  const actualLoss = (parentQuantity - childQuantity) / parentQuantity;
 
-  if (childQuantity > parentQuantity * (1 + input.wasteTolerance)) {
+  if (actualLoss < min) {
     throw new TRPCError({
       code: "CONFLICT",
-      message: "Mass Balance violation: output quantity exceeds allowed input quantity."
+      message: "Loss below minimum — possible phantom input"
+    });
+  }
+
+  if (actualLoss > max) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: `Loss ${(actualLoss * 100).toFixed(1)}% exceeds profile maximum ${(
+        max * 100
+      ).toFixed(1)}%`
     });
   }
 

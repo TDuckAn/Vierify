@@ -23,6 +23,8 @@ export const createBatchSchema = z.object({
   name: z.string().trim().min(1).max(256),
   nodeId: z.string().uuid(),
   pinHash: sha256HexSchema.optional(),
+  processStep: z.string().trim().min(1).max(100).optional(),
+  productType: z.string().trim().min(1).max(100).optional(),
   quantity: z.number().positive(),
   uom: z.string().trim().min(1).max(32)
 });

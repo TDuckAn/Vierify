@@ -161,6 +161,28 @@ export const invoice = pgTable(
   })
 );
 
+export const lossProfile = pgTable(
+  "loss_profile",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => supplyChainNode.id),
+    productType: text("product_type").notNull(),
+    processStep: text("process_step").notNull(),
+    minLossPct: numeric("min_loss_pct", { precision: 5, scale: 2 }).notNull(),
+    maxLossPct: numeric("max_loss_pct", { precision: 5, scale: 2 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+  },
+  (table) => ({
+    orgProductStepUniqueIdx: uniqueIndex("loss_profile_org_product_step_unique_idx").on(
+      table.orgId,
+      table.productType,
+      table.processStep
+    )
+  })
+);
+
 export const auditLog = pgTable(
   "audit_log",
   {
@@ -215,6 +237,7 @@ export const schema = {
   invoiceMethodEnum,
   invoiceStatusEnum,
   kybStatusEnum,
+  lossProfile,
   subscription,
   subscriptionTierEnum,
   supplyChainNode,
