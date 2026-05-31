@@ -37,7 +37,8 @@ test.describe("Subscription page — authenticated", () => {
   });
 
   test("shows current plan label (Free on seeded account)", async ({ page }) => {
-    await expect(page.getByText("Free").first()).toBeVisible();
+    // Scope to <main> to avoid the nav tier badge (hidden sm:block on mobile)
+    await expect(page.getByRole("main").getByText("Free").first()).toBeVisible();
   });
 
   test("shows 'Đang hoạt động' status badge", async ({ page }) => {
