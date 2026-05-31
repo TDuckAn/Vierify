@@ -187,7 +187,6 @@ const s = StyleSheet.create({
     left: 0,
     right: 0,
     height: 2,
-    background: "transparent",
     backgroundColor: "transparent",
     borderTopWidth: 2,
     borderTopColor: "#14B8A6"

@@ -58,7 +58,7 @@ export default function CreateBatchScreen() {
     try {
       await trpc.batches.create.mutate({
         name: form.name.trim(),
-        quantity: form.quantity,
+        quantity: Number(form.quantity),
         uom: form.uom,
         gs1TraceId: form.gs1TraceId.trim(),
         ...(form.gpsLat && form.gpsLng
