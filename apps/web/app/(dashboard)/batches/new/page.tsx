@@ -71,7 +71,7 @@ export default function NewBatchPage(): React.ReactNode {
       nodeId,
       quantity: parseFloat(quantity),
       uom,
-      ...(expiresAt ? { expiresAt: new Date(expiresAt).toISOString() } : {})
+      ...(expiresAt ? { expiresAt: new Date(expiresAt) } : {})
     });
   }
 
