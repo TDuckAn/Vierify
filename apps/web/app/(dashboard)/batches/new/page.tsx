@@ -81,11 +81,26 @@ export default function NewBatchPage(): React.ReactNode {
     );
   }
 
-  const filteredBatches = (allBatches ?? []).filter(
-    (b) =>
-      b.name.toLowerCase().includes(parentSearch.toLowerCase()) ||
-      b.gs1TraceId.toLowerCase().includes(parentSearch.toLowerCase())
-  );
+  const filteredBatches = (allBatches ?? [])
+    .filter(
+      (b) =>
+        b.name.toLowerCase().includes(parentSearch.toLowerCase()) ||
+        b.gs1TraceId.toLowerCase().includes(parentSearch.toLowerCase())
+    )
+    .sort((a, b) => {
+      // FIFO: sort by expiresAt ascending, nulls last
+      if (!a.expiresAt && !b.expiresAt) return 0;
+      if (!a.expiresAt) return 1;
+      if (!b.expiresAt) return -1;
+      return new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime();
+    });
+
+  const fifoNudgeBatch = (() => {
+    const top = filteredBatches.find(b => b.expiresAt);
+    if (!top?.expiresAt) return null;
+    const daysLeft = Math.ceil((new Date(top.expiresAt).getTime() - Date.now()) / 86_400_000);
+    return daysLeft <= 3 ? { name: top.name, daysLeft } : null;
+  })();
 
   const isPending = createMutation.isPending || linkMutation.isPending;
 
@@ -231,6 +246,15 @@ export default function NewBatchPage(): React.ReactNode {
                 placeholder="Tìm theo tên hoặc GS1 ID…"
                 className="mb-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-chain focus:ring-2 focus:ring-chain/20 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-50"
               />
+              {fifoNudgeBatch && (
+                <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-900/20">
+                  <span className="mt-0.5 text-amber-500">⏰</span>
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    <strong>{fifoNudgeBatch.name}</strong> còn{" "}
+                    <strong>{fifoNudgeBatch.daysLeft} ngày</strong> · Nên xử lý trước (FIFO)
+                  </p>
+                </div>
+              )}
               {filteredBatches.length === 0 ? (
                 <p className="py-2 text-center text-sm text-slate-400">Không tìm thấy lô hàng</p>
               ) : (
@@ -247,6 +271,11 @@ export default function NewBatchPage(): React.ReactNode {
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{b.name}</p>
                           <p className="truncate font-mono text-xs text-slate-400">{b.gs1TraceId.slice(0, 28)}…</p>
+                          {b.expiresAt && (
+                            <p className="text-[10px] text-amber-600 dark:text-amber-400">
+                              HSD: {new Date(b.expiresAt).toLocaleDateString("vi-VN")}
+                            </p>
+                          )}
                         </div>
                       </label>
                     </li>
