@@ -135,8 +135,7 @@ test.describe("Create batch form", () => {
 
   // T33 — parent batch picker
   test("shows 'Lô hàng cha' optional section", async ({ page }) => {
-    await expect(page.getByText("Lô hàng cha")).toBeVisible();
-    await expect(page.getByText(/tùy chọn/)).toBeVisible();
+    await expect(page.getByText("Lô hàng cha (tùy chọn)")).toBeVisible();
   });
 
   test("parent picker expands on '+ Thêm lô hàng cha' click", async ({ page }) => {

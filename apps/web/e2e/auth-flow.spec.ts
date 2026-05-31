@@ -28,7 +28,7 @@ test.describe("/register page", () => {
   });
 
   test("password-strength meter appears after typing", async ({ page }) => {
-    await page.locator('input[type="password"]').first().fill("abc");
+    await page.locator('input[type="password"]').first().fill("abcdefgh");
     await expect(page.getByText("Yếu")).toBeVisible();
   });
 
