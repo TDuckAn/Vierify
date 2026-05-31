@@ -1,10 +1,14 @@
 import Link from "next/link";
 
+import { TRPCProvider } from "../../lib/trpc-provider";
+
 export default function OnboardingLayout({ children }: { children: React.ReactNode }): React.ReactNode {
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      {children}
-    </div>
+    <TRPCProvider>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+        {children}
+      </div>
+    </TRPCProvider>
   );
 }
 
