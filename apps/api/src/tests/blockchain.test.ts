@@ -19,6 +19,7 @@ const fakeBatch: TraceBatchRecord = {
   scanCount: 42,            // must NOT appear in hash
   nodeId: "node-uuid-001",
   docHash: null,
+  expiresAt: null,
   bcStatus: 0,              // must NOT appear in hash
   txHash: null,             // must NOT appear in hash
   version: 1,

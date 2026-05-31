@@ -62,6 +62,7 @@ export async function createBatch(
     .insert(traceBatch)
     .values({
       docHash: input.docHash,
+      expiresAt: input.expiresAt,
       gpsLat: input.gpsLat?.toString(),
       gpsLng: input.gpsLng?.toString(),
       gs1TraceId: input.gs1TraceId,

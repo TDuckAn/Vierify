@@ -16,6 +16,7 @@ export const sha256HexSchema = z
 
 export const createBatchSchema = z.object({
   docHash: sha256HexSchema.optional(),
+  expiresAt: z.coerce.date().optional(),
   gpsLat: z.number().min(-90).max(90).optional(),
   gpsLng: z.number().min(-180).max(180).optional(),
   gs1TraceId: gs1TraceIdSchema,

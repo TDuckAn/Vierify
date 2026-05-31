@@ -29,6 +29,13 @@
       "when": 1780017500000,
       "tag": "0003_trace_scan_count_realtime",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780235696865,
+      "tag": "0004_sharp_captain_cross",
+      "breakpoints": true
     }
   ]
 }

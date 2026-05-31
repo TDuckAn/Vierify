@@ -36,8 +36,8 @@ test.describe("Login page", () => {
     await expect(page.getByRole("button", { name: "Đăng nhập" })).toBeVisible();
   });
 
-  test("shows contact link for non-merchants", async ({ page }) => {
-    await expect(page.getByText("Liên hệ với chúng tôi")).toBeVisible();
+  test("shows register CTA for new merchants", async ({ page }) => {
+    await expect(page.getByRole("link", { name: /Bắt đầu miễn phí/ })).toBeVisible();
   });
 });
 

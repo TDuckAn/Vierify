@@ -1,8 +1,8 @@
 # Vierify — Project Plan
 
-> **Week 8 / 14** | Sprint 2 ✅ complete | Sprint 3 ✅ complete | Sprint 4 🔄 in progress | v1 deadline: end of Week 14
-> **CI status (2026-05-30):** ✅ green · T32–T39, T41, T42, T43, T44 shipped
-> **Agent note:** Codex quota exhausted — GitHub Copilot (GPT 5.2) available for backend tasks via `.github/copilot-instructions.md`
+> **Week 8 / 14** | Sprint 2 ✅ complete | Sprint 3 ✅ complete | Sprint 4 🔄 in progress | Sprint 5 🔄 in progress | v1 deadline: end of Week 14
+> **CI status (2026-05-31):** ✅ green · T32–T50 shipped (committing Sprint 5 now)
+> **Agent note:** Codex quota restored (2026-05-31) — T40 backend + T48 billing backend assigned
 > Task legend: `☐` not started · `🔄` in progress · `✅` done · `❌` blocked
 
 ---
@@ -213,11 +213,40 @@ audit_log          id · actor_id · action · resource_id · created_at  ← ap
 | T37 | KYB approval SLA banner on login + dashboard | Claude | P1 | ✅ |
 | T38 | Document upload drag-drop polish on batch detail | Claude | P2 | ✅ |
 | T39 | PWA manifest + install prompt (Add to Home Screen) | Claude | P2 | ✅ |
-| T40 | Batch expiry date field — schema (Codex) + UI (Claude) | Codex + Claude | P3 | ☐ |
+| T40 | Batch expiry date field — schema (Codex) + UI (Claude) | Codex + Claude | P3 | 🔄 | Backend ✅ — see Sprint 5 T40 · UI ☐ — see Sprint 5 T40-ui |
 | T41 | Update Playwright tests for T33–T39 | Claude | P1 | ✅ |
 | T42 | Security review (`/security-review` skill) | Claude | P0 | ✅ |
 | T43 | Performance pass: Next.js PageSpeed > 85 | Claude | P1 | ✅ |
 | T44 | Data anonymisation audit (Decree 13/2023/NĐ-CP) | Claude | P1 | ✅ |
+
+### Sprint 5 — Week 14 (v1 prep)
+
+> Claude shipped auth + onboarding + subscription UI + T49 Playwright tests on 2026-05-31. Codex shipped T40 + T48 backend same session. Full Sprint 5 committed together.
+
+#### Claude — shipped
+
+| # | Task | Owner | Status | Notes |
+|---|---|---|---|---|
+| T45 | Auth flow: `/register`, `/forgot-password`, `/reset-password`, `/verify-email` | Claude | ✅ | Supabase Auth wired · password-strength meter · resend email · token-exchange in verify-email · login updated with register CTA + forgot-password link |
+| T46 | Onboarding flow: `/onboarding/plan` + `/onboarding/profile` | Claude | ✅ | 5-tier plan selector (Free/Basic/Advanced/Professional/Enterprise) · PayOS/MoMo payment method toggle · company profile form with MST regex + node_type picker · calls `trpc.nodes.create` |
+| T47 | Subscription management: `/dashboard/subscription` | Claude | ✅ | Plan usage card + batch quota progress · invoice table (paid/pending/failed badges) · upgrade CTA · mock data with `TODO(T52)` comment for billing tRPC hook |
+
+#### Codex — pick up now
+
+| # | Task | Owner | Priority | Status | Acceptance criteria |
+|---|---|---|---|---|---|
+| T40 | Batch expiry date — schema + API | Codex | P3 | ✅ | `expires_at TIMESTAMPTZ NULL` added to `trace_batch` · migration `0004_sharp_captain_cross.sql` committed · `expiresAt` optional in `createBatchSchema` + passed through service · included in all batch read responses |
+| T48 | Billing/subscription backend | Codex | P2 | ✅ | `subscription_tier`, `invoice_method`, `invoice_status` enums · `subscription` table (one row per org, unique index) · `invoice` table (amount ≥ 0 check, period format check, org+period index) · `billing.getCurrentSubscription` (batchesUsed COUNT for current calendar month + tier + trialEndsAt) · `billing.getInvoices` (ordered by createdAt DESC) · migration in `0004_sharp_captain_cross.sql` · wired as `billing: billingRouter` in root router |
+
+#### Claude — pending Codex tasks above
+
+| # | Task | Owner | Priority | Status | Notes |
+|---|---|---|---|---|---|
+| T40-ui | Expiry date field — batch create form + batch detail | Claude | P3 | ☐ | Depends on T40 schema shipped by Codex · date picker input on create form · display formatted date on detail page |
+| T49 | Playwright tests for T45–T47 | Claude | P1 | ✅ | Written by Claude (2026-05-31) · `auth-flow.spec.ts`: 20 cases — /register (logo, fields, strength meter 3 levels, mismatch error, ToS links, register/login nav), /forgot-password (logo, heading, fields, back link), /reset-password (fields, strength meter, mismatch error, short-pw error), /verify-email (success state, error state with expired token), login page Sprint 5 additions (forgot-password link, register CTA) · `onboarding.spec.ts`: 13 cases — /onboarding/plan (heading, 5 tier cards, Professional badge, Free default selection, paid tier shows PayOS/MoMo toggle, toggle switches methods, Free hides toggle, Continue navigates to /profile, step indicator labels, 375px overflow) · /onboarding/profile (heading, all 4 fields, MST validation error, valid MST clears error, 5 node-type options, is_individual reveals PII notice, submit button, step indicator) · `subscription.spec.ts`: 11 cases — auth guard (redirect to /login), authenticated: heading, plan label, active badge, trial expiry, quota bar, Nâng cấp expands cards, upgrade cards link to /onboarding/plan, invoice section, Free plan empty invoice, back link, 375px overflow, avatar menu subscription link · Fixed `b2b-dashboard.spec.ts`: updated "contact link" → "register CTA" test (login page no longer has 'Liên hệ với chúng tôi') |
+| T50 | Wire T48 billing data into T47 subscription page | Claude | P2 | ☐ | Replace `MOCK_PLAN` + `MOCK_INVOICES` with live tRPC calls once T48 ships |
+
+---
 
 ### v1 Launch — Week 14
 - Migrate Polygon Amoy → PoS Mainnet

@@ -639,7 +639,7 @@ function Hero() {
             </p>
             <div className="mt-10 flex flex-wrap gap-4">
               <a
-                href="#pricing"
+                href="/register"
                 className="rounded-full bg-chain px-8 py-3.5 text-base font-semibold text-white shadow-sm transition-all hover:bg-teal-600 hover:shadow-md"
               >
                 {t.ctaPrimary}
@@ -1110,7 +1110,7 @@ function CTABanner() {
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <a
-            href="#pricing"
+            href="/register"
             className="rounded-full bg-white px-8 py-3.5 text-base font-semibold text-chain shadow-md transition-all hover:shadow-lg"
           >
             {t.primary}

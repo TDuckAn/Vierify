@@ -22,6 +22,18 @@ export const kybStatusEnum = pgEnum("kyb_status", [
   "suspended"
 ]);
 
+export const subscriptionTierEnum = pgEnum("subscription_tier", [
+  "free",
+  "basic",
+  "advanced",
+  "professional",
+  "enterprise"
+]);
+
+export const invoiceMethodEnum = pgEnum("invoice_method", ["payos", "momo"]);
+
+export const invoiceStatusEnum = pgEnum("invoice_status", ["paid", "pending", "failed"]);
+
 export const supplyChainNode = pgTable(
   "supply_chain_node",
   {
@@ -64,6 +76,7 @@ export const traceBatch = pgTable(
     bcStatus: smallint("bc_status").default(0).notNull(),
     txHash: text("tx_hash"),
     version: integer("version").default(1).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
   },
@@ -109,6 +122,42 @@ export const batchGenealogy = pgTable(
       table.parentBatchId,
       table.childBatchId
     )
+  })
+);
+
+export const subscription = pgTable(
+  "subscription",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orgId: uuid("org_id").notNull(),
+    tier: subscriptionTierEnum("tier").default("free").notNull(),
+    trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+  },
+  (table) => ({
+    orgIdUniqueIdx: uniqueIndex("subscription_org_id_unique_idx").on(table.orgId),
+    tierIdx: index("subscription_tier_idx").on(table.tier)
+  })
+);
+
+export const invoice = pgTable(
+  "invoice",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orgId: uuid("org_id").notNull(),
+    period: varchar("period", { length: 16 }).notNull(),
+    amountVnd: integer("amount_vnd").notNull(),
+    method: invoiceMethodEnum("method").notNull(),
+    status: invoiceStatusEnum("status").default("pending").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+  },
+  (table) => ({
+    amountVndCheck: check("invoice_amount_vnd_check", sql`${table.amountVnd} >= 0`),
+    orgIdIdx: index("invoice_org_id_idx").on(table.orgId),
+    orgIdPeriodIdx: index("invoice_org_id_period_idx").on(table.orgId, table.period),
+    periodCheck: check("invoice_period_check", sql`${table.period} ~ '^[0-9]{4}-[0-9]{2}$'`)
   })
 );
 
@@ -162,7 +211,12 @@ export const schema = {
   auditLog,
   batchGenealogy,
   batchGenealogyRelations,
+  invoice,
+  invoiceMethodEnum,
+  invoiceStatusEnum,
   kybStatusEnum,
+  subscription,
+  subscriptionTierEnum,
   supplyChainNode,
   supplyChainNodeRelations,
   traceBatch,

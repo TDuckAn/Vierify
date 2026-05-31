@@ -209,3 +209,94 @@ Branch per task: `feat/T28-kyb-stub`
 3. Implement following patterns above
 4. Run `pnpm typecheck` — 0 errors required
 5. Signal Claude for review — Claude writes integration tests and approves ✅
+
+---
+
+## Sprint 5 — Active Tasks for Codex (2026-05-31)
+
+Pick up **T40** and **T48** in parallel. Both are schema + API tasks only — no UI.
+
+### T40 — Batch expiry date
+
+**File:** `apps/api/src/db/schema.ts` → `traceBatch` table
+
+Add one nullable column:
+
+```typescript
+expiresAt: timestamp("expires_at", { withTimezone: true }),
+```
+
+Then run:
+
+```bash
+pnpm --filter @vierify/api drizzle-kit generate
+pnpm --filter @vierify/api drizzle-kit migrate
+```
+
+**API changes:**
+- `createBatchSchema` in `batches.schema.ts` — add `expiresAt: z.string().datetime().optional()`
+- `createBatch` service — pass `expiresAt` through to insert
+- All batch read responses (getBatch, listBatches) — include `expiresAt` in the returned object
+
+No business rules on null. No breaking changes to existing tests.
+
+---
+
+### T48 — Billing/subscription backend
+
+**New module:** `apps/api/src/modules/billing/`
+
+Create `billing.router.ts`, `billing.service.ts`, `billing.schema.ts` following the standard 3-file pattern.
+
+**Schema additions** in `apps/api/src/db/schema.ts`:
+
+```typescript
+export const subscriptionTierEnum = pgEnum("subscription_tier", [
+  "free", "basic", "advanced", "professional", "enterprise"
+]);
+
+export const subscriptions = pgTable("subscriptions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  orgId: uuid("org_id").notNull().references(() => supplyChainNode.id),
+  tier: subscriptionTierEnum("tier").notNull().default("free"),
+  trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  startedAt: timestamp("started_at", { withTimezone: true }).defaultNow(),
+});
+
+export const invoiceStatusEnum = pgEnum("invoice_status", ["paid", "pending", "failed"]);
+export const paymentMethodEnum = pgEnum("payment_method", ["payos", "momo"]);
+
+export const invoices = pgTable("invoices", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  orgId: uuid("org_id").notNull().references(() => supplyChainNode.id),
+  period: text("period").notNull(),       // e.g. "Tháng 5/2026"
+  amountVnd: integer("amount_vnd").notNull(),
+  method: paymentMethodEnum("method").notNull(),
+  status: invoiceStatusEnum("status").notNull().default("pending"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+```
+
+**tRPC procedures:**
+
+```typescript
+// billing.router.ts
+export const billingRouter = router({
+  getCurrentSubscription: readProcedure.query(async ({ ctx }) => {
+    // Returns { tier, trialEndsAt, batchesUsedThisMonth }
+    // batchesUsedThisMonth = count of trace_batch rows for this org created in current calendar month
+    // If no subscription row exists yet, return { tier: "free", trialEndsAt: null, batchesUsedThisMonth: 0 }
+    const orgId = getTenantOrgId(ctx.user);
+    return getCurrentSubscription(orgId);
+  }),
+
+  getInvoices: readProcedure.query(async ({ ctx }) => {
+    const orgId = getTenantOrgId(ctx.user);
+    return getInvoices(orgId);
+  }),
+});
+```
+
+Wire into root router as `billing: billingRouter`.
+
+No payment gateway calls — stubs only. No external HTTP requests. `batchesUsedThisMonth` is a COUNT query against `trace_batch` filtered by `org_id` + `created_at >= start of current month`.
