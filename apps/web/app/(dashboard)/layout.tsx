@@ -141,6 +141,13 @@ function AvatarMenu() {
           >
             Quản lý gói
           </Link>
+          <Link
+            href="/dashboard/admin/loss-profiles"
+            onClick={() => setOpen(false)}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-50"
+          >
+            Hồ sơ hao hụt
+          </Link>
           <div className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
           <button
             onClick={handleSignOut}
